@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVALANCHE-VLF — SIH260104</title>
+<style>
+    :root {
+        --bg: #07090e; --panel: #0f141c; --border: #232f3e;
+        --text: #e6edf3; --muted: #8a97a5;
+        --accent: #39c5cf; --p1: #f85149; --gold: #d29922; --green: #3fb950; --violet: #bc8cff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+    body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+    .deck { position: relative; width: 100vw; height: 100vh; }
+    .slide {
+        position: absolute; inset: 0;
+        display: none; flex-direction: column; justify-content: center;
+        padding: 6vh 9vw;
+    }
+    .slide.active { display: flex; animation: fadein 0.35s ease; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .kicker { font-size: clamp(0.7rem, 1.4vw, 0.85rem); font-weight: 800; letter-spacing: 2.5px;
+              color: var(--accent); text-transform: uppercase; margin-bottom: 1.6vh; }
+    h1 { font-size: clamp(2.2rem, 5.2vw, 4.2rem); font-weight: 900; letter-spacing: 1px; line-height: 1.05; }
+    h2 { font-size: clamp(1.5rem, 3.2vw, 2.6rem); font-weight: 850; margin-bottom: 3.5vh; line-height: 1.15; }
+    h2 em, h1 em { color: var(--accent); font-style: normal; }
+    p, li { font-size: clamp(0.95rem, 1.9vw, 1.25rem); color: #c4cfd9; line-height: 1.55; }
+    ul { list-style: none; }
+    li { margin-bottom: 1.6vh; padding-left: 1.4em; position: relative; }
+    li::before { content: "▸"; position: absolute; left: 0; color: var(--accent); font-weight: 900; }
+    strong { color: #fff; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4vw; align-items: start; }
+    .stat-row { display: flex; gap: 3vw; margin-top: 4vh; flex-wrap: wrap; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+            padding: 2.2vh 2vw; min-width: 16vw; }
+    .stat .num { font-size: clamp(1.6rem, 3.4vw, 2.8rem); font-weight: 900; color: var(--p1); }
+    .stat .num.g { color: var(--green); } .stat .num.a { color: var(--gold); } .stat .num.c { color: var(--accent); }
+    .stat .lbl { font-size: clamp(0.68rem, 1.2vw, 0.82rem); color: var(--muted); text-transform: uppercase;
+                 letter-spacing: 1px; margin-top: 0.6vh; font-weight: 700; }
+
+    table { width: 100%; border-collapse: collapse; font-size: clamp(0.78rem, 1.5vw, 1rem); }
+    th { text-align: left; color: var(--muted); text-transform: uppercase; font-size: 0.72em;
+         letter-spacing: 1px; padding: 0.8em 0.9em; border-bottom: 1px solid var(--border); }
+    td { padding: 0.75em 0.9em; border-bottom: 1px solid rgba(35, 47, 62, 0.5); color: #c4cfd9; }
+    td:first-child { color: #fff; font-weight: 700; }
+    tr:last-child td { border-bottom: none; }
+
+    .flow { display: flex; gap: 1.2vw; margin-top: 2vh; flex-wrap: wrap; }
+    .node { background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+            padding: 1.8vh 1.4vw; font-size: clamp(0.72rem, 1.4vw, 0.92rem); font-weight: 700;
+            flex: 1; min-width: 12vw; text-align: center; }
+    .node span { display: block; color: var(--muted); font-weight: 400; font-size: 0.82em; margin-top: 0.5vh; }
+    .arrow { align-self: center; color: var(--accent); font-size: 1.4rem; font-weight: 900; }
+
+    .badge { display: inline-block; background: #1f6feb; color: #fff; font-size: clamp(0.65rem, 1.2vw, 0.78rem);
+             font-weight: 800; padding: 0.45em 0.9em; border-radius: 4px; letter-spacing: 1px; margin-right: 0.6vw; }
+    .badge.dark { background: #16202c; color: #79c0ff; border: 1px solid #23374d; }
+
+    .footer-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between;
+                  align-items: center; padding: 1.4vh 9vw; font-size: clamp(0.62rem, 1.1vw, 0.75rem);
+                  color: var(--muted); border-top: 1px solid var(--border); background: rgba(7, 9, 14, 0.9); z-index: 10; }
+    .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent);
+                box-shadow: 0 0 8px var(--accent); transition: width 0.25s ease; z-index: 20; }
+
+    .quote { border-left: 4px solid var(--p1); padding-left: 1.5em; font-size: clamp(1rem, 2.1vw, 1.4rem);
+             color: #dde5ec; font-style: italic; max-width: 60ch; }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+<!-- 1 TITLE -->
+<section class="slide active">
+    <div style="margin-bottom: 2.5vh;">
+        <span class="badge">SIH 2026 · PS SIH260104</span>
+        <span class="badge dark">Theme: Disaster Management</span>
+        <span class="badge dark">MoD · DRDO · DGRE</span>
+    </div>
+    <h1>AVALANCHE<span style="color:var(--accent)">-</span>VLF</h1>
+    <h1 style="font-size:clamp(1.3rem,3vw,2.4rem); font-weight:700; color:#c4cfd9; margin-top:1.5vh;">
+        Identification of victims buried under avalanches —<br>autonomous, auditable, edge-native.
+    </h1>
+    <div class="stat-row">
+        <div class="stat"><div class="num c">7</div><div class="lbl">Sensor modalities fused</div></div>
+        <div class="stat"><div class="num a">16 B</div><div class="lbl">LoRa target vector</div></div>
+        <div class="stat"><div class="num g">34</div><div class="lbl">Verification tests passing</div></div>
+    </div>
+</section>
+
+<!-- 2 THE PROBLEM -->
+<section class="slide">
+    <div class="kicker">The problem — SIH260104</div>
+    <h2>The burial clock runs at <em>15 minutes</em>. The response arrives in <em>30–60.</em></h2>
+    <div class="cols">
+        <ul>
+            <li>Buried victims survive on an <strong>asphyxiation cliff</strong>: ~90% survival if extracted within 15 minutes, below 30% past 35 minutes.</li>
+            <li>Sectors like Siachen, Ladakh and North Sikkim need <strong>30–60+ minutes</strong> just to mobilize a probe line.</li>
+            <li><strong>Passive victims carry nothing</strong> — no 457 kHz transceiver, no RECCO reflector, often no phone. Existing systems cannot see them.</li>
+        </ul>
+        <div>
+            <div class="stat-row" style="margin-top:0;">
+                <div class="stat"><div class="num">~90%</div><div class="lbl">Survival ≤ 15 min</div></div>
+                <div class="stat"><div class="num a">&lt;30%</div><div class="lbl">Survival &gt; 35 min</div></div>
+            </div>
+            <div class="stat-row">
+                <div class="stat"><div class="num">50+ min</div><div class="lbl">Probe-line sweep of one debris field</div></div>
+                <div class="stat"><div class="num c">10–15 min</div><div class="lbl">Dual-UAV autonomous sweep (target)</div></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 3 WHY EXISTING FAILS -->
+<section class="slide">
+    <div class="kicker">Why current methods fall short</div>
+    <h2>Three field failure modes dominate every published attempt</h2>
+    <table>
+        <tr><th>Approach</th><th>Fails because</th></tr>
+        <tr><td>Handheld beacon search</td><td>Needs trained searchers on foot across dangerous debris; hopeless for passive victims</td></tr>
+        <tr><td>Drone + 457 kHz receiver</td><td>Motor EMI collapses sensitivity to ~6 m radius vs 50 m handheld (documented 2017–2025)</td></tr>
+        <tr><td>Thermal / RGB only</td><td>Buried victims emit nothing visible through 1–3 m of snowpack</td></tr>
+        <tr><td>Black-box ML triage</td><td>Unexplainable decisions are indefensible when lives and missions are audited</td></tr>
+    </table>
+    <p style="margin-top:3.5vh;">AVALANCHE-VLF is engineered against each of these — <strong>not around them.</strong></p>
+</section>
+
+<!-- 4 SOLUTION OVERVIEW -->
+<section class="slide">
+    <div class="kicker">Our answer</div>
+    <h2>A deterministic fusion engine that turns sensor passes into <em>rescue directives</em></h2>
+    <div class="flow">
+        <div class="node">Dual UAV sweep<span>457 kHz · GPR · micro-Doppler<br>seismic · thermal · RGB · RF</span></div>
+        <div class="arrow">→</div>
+        <div class="node">Evidence adapters<span>log-likelihood ratio<br>+ environmental quality q<sub>k</sub></span></div>
+        <div class="arrow">→</div>
+        <div class="node">Bayesian grid fusion<span>leaky accumulators<br>saturated per evidence group</span></div>
+        <div class="arrow">→</div>
+        <div class="node">Triage + survival ranking<span>P(H) × S(t,ρ) ÷ effort+risk</span></div>
+        <div class="arrow">→</div>
+        <div class="node">Directive<span>true MGRS · depth Z · safe azimuth<br>16-byte LoRa frame</span></div>
+    </div>
+    <ul style="margin-top:4vh;">
+        <li><strong>Zero ML in the decision path.</strong> Every log-odds update is closed-form, reproducible, and logged to JSONL for after-action audit.</li>
+        <li><strong>Runs fully offline</strong> on a Jetson-class edge node — built for air-gapped operations.</li>
+    </ul>
+</section>
+
+<!-- 5 ARCHITECTURE -->
+<section class="slide">
+    <div class="kicker">Architecture</div>
+    <h2>Small, strict modules with enforced boundaries</h2>
+    <table>
+        <tr><th>Module</th><th>Responsibility</th></tr>
+        <tr><td>engine/adapters/</td><td>One adapter per modality: parse → LLR → environmental quality. Unknown sensors fail loudly, never silently default.</td></tr>
+        <tr><td>engine/fusion.py</td><td>Log-odds accumulation, saturation caps, multi-pass persistence, directive issuance under a single state lock</td></tr>
+        <tr><td>engine/geo.py</td><td>Dependency-free WGS84 → UTM → MGRS (USGS PP 1395, NGA TM 8358.1)</td></tr>
+        <tr><td>engine/terrain.py</td><td>DEM priors, slope-band likelihoods, monotonic rescuer hazard</td></tr>
+        <tr><td>config/loader.py</td><td>Schema-validated YAML; hot-swaps validate on a deep copy and persist atomically</td></tr>
+        <tr><td>telemetry/lora_packet.py</td><td>16-byte big-endian frame, CRC-16/CCITT, origin-referenced offsets that raise rather than wrap</td></tr>
+        <tr><td>frontend/</td><td>Zero-dependency HUD; server owns the survival clock, browser only renders it</td></tr>
+    </table>
+</section>
+
+<!-- 6 DECISION MATH -->
+<section class="slide">
+    <div class="kicker">The math that decides</div>
+    <h2>Correlated sensors cannot inflate confidence</h2>
+    <div class="cols">
+        <ul>
+            <li>Modalities split into <strong>Group A (electronic), B (subsurface), C (surface)</strong>.</li>
+            <li>Each group saturates at its own cap: Γ<sub>A</sub>=4.5, Γ<sub>B</sub>=4.2, Γ<sub>C</sub>=2.5 log-odds. Ten co-located receivers still cannot reach P1 alone.</li>
+            <li>Accumulators leak <strong>γ = 0.96 per second</strong> of wall time — staleness tracks real time, not scan frequency.</li>
+            <li>Multi-pass persistence: repeated detections ≥5 s apart earn +0.75; consistent ghosts lose 0.40.</li>
+            <li>Posterior log-odds clamped to ±15 before sigmoid — no numerical windup, ever.</li>
+        </ul>
+        <div>
+            <p style="margin-bottom:2vh;"><strong>Triage thresholds</strong></p>
+            <table>
+                <tr><th>Zone</th><th>Rule</th><th>Action</th></tr>
+                <tr><td style="color:var(--p1)">P1</td><td>P ≥ 0.85</td><td>Probe & excavate, marker drop</td></tr>
+                <tr><td style="color:var(--gold)">P2</td><td>P ≥ 0.45</td><td>Secondary radar pass</td></tr>
+                <tr><td style="color:#58a6ff">P3</td><td>P ≥ 0.15</td><td>Candidate watch</td></tr>
+                <tr><td style="color:var(--green)">P4</td><td>P &lt; 0.15</td><td>No alarm</td></tr>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- 7 PASSIVE DETECTION -->
+<section class="slide">
+    <div class="kicker">The differentiator</div>
+    <h2>Finding the victim who <em>carries nothing</em></h2>
+    <ul>
+        <li><strong>GPR dielectric contrast:</strong> human tissue ε<sub>r</sub> ≈ 50–55 vs snow ε<sub>r</sub> ≈ 3.2 and granite ε<sub>r</sub> ≈ 6–9. The engine reads permittivity directly from the payload schema and rejects rock clutter by value.</li>
+        <li><strong>Micro-Doppler respiration:</strong> chest-wall displacement in the 0.2–0.4 Hz band distinguishes a living subject from static debris returns.</li>
+        <li><strong>Micro-seismic impulse patterns:</strong> periodic tapping/calling detection corroborates life-signs acoustically.</li>
+        <li>Wet-snow absorption modeled as q = e<sup>−κ·ρ·d</sup> so degraded penetration lowers evidence weight instead of manufacturing false confidence.</li>
+    </ul>
+    <p class="quote" style="margin-top:3vh;">A non-cooperative civilian reaches P1 strictly through subsurface cross-confirmation — demonstrated live in the demo scenario.</p>
+</section>
+
+<!-- 8 DIRECTIVE -->
+<section class="slide">
+    <div class="kicker">From lock to rescuer</div>
+    <h2>Every P1 lock emits a <em>complete rescue order</em></h2>
+    <ul>
+        <li><strong>True MGRS reference:</strong> real WGS84 → UTM → MGRS conversion, verified against the published anchor <span class="mono">31N AA 66021 00000</span> and sub-millimeter global round-trips. No fabricated coordinates anywhere.</li>
+        <li><strong>Burial depth Z:</strong> radar two-way-time estimate carried into the directive and the LoRa frame.</li>
+        <li><strong>Safe approach azimuth:</strong> perpendicular to the terrain gradient in compass frame — verified numerically that the heading is contour-parallel (dot product = 0). Rescuers never walk the fall-line the system exists to warn about.</li>
+        <li><strong>16-byte LoRa frame:</strong> msg type, cell, probability, depth cm, radius dm, bearing, flags, mission-grid offsets, CRC-16. Out-of-range values raise — they never wrap silently.</li>
+    </ul>
+</section>
+
+<!-- 9 VERIFICATION -->
+<section class="slide">
+    <div class="kicker">Verified correctness</div>
+    <h2>"Foolproof" is a test suite, not a claim</h2>
+    <div class="stat-row" style="margin-top:0;">
+        <div class="stat"><div class="num g">34</div><div class="lbl">Tests passing</div></div>
+        <div class="stat"><div class="num c">&lt;1 mm</div><div class="lbl">Geo round-trip error over 1007 global samples</div></div>
+        <div class="stat"><div class="num a">±0 m</div><div class="lbl">Azimuth-to-gradient dot product tolerance</div></div>
+    </div>
+    <ul style="margin-top:3.5vh;">
+        <li><strong>Anchors + properties, not vibes:</strong> null-island MGRS anchor, central-meridian exactness, mirror symmetry, forward/inverse closure.</li>
+        <li><strong>Concurrency:</strong> 8 parallel workers hammer one cell; lock safety asserted, no NaN ever observed.</li>
+        <li><strong>Boundaries:</strong> malformed configs rejected with zero trace on live state; unknown sensor priors raise; API rejects invalid hot-swaps with 422.</li>
+        <li><strong>E2E:</strong> server boots, streams 10 Hz frames, issues its first P1 directive with correct MGRS and contour azimuth inside 40 seconds.</li>
+    </ul>
+</section>
+
+<!-- 10 HARDWARE & CONNECTIVITY -->
+<section class="slide">
+    <div class="kicker">Hardware & connectivity plan</div>
+    <h2>Real devices, three-tier links, honest costs</h2>
+    <table>
+        <tr><th>Modality</th><th>Device</th><th>Field note</th></tr>
+        <tr><td>457 kHz RX</td><td>Barryvox UART tap or ferrite SDR front-end</td><td>Mast-mounted 2 m below airframe to beat motor EMI</td></tr>
+        <tr><td>UWB GPR</td><td>Zond Aero LF class / LRDE pod</td><td>Wet-snow absorption calibrated per season</td></tr>
+        <tr><td>Micro-Doppler</td><td>TI IWR6843 60 GHz FMCW</td><td>Proven 0.1–1 Hz chest-wall band</td></tr>
+        <tr><td>Thermal / RGB</td><td>FLIR Boson 640 + gimbal cam</td><td>Shallow/surface victims</td></tr>
+        <tr><td>Edge compute</td><td>Jetson Orin NX command + Orin Nano per UAV</td><td>Air-gapped, offline-first</td></tr>
+    </table>
+    <ul style="margin-top:2.5vh;">
+        <li><strong>Tier 1</strong> MAVLink @ 900 MHz HDR (swarm) · <strong>Tier 2</strong> our 16-byte vectors over LoRa 865–867 MHz (responders, NLOS) · <strong>Tier 3</strong> Iridium SBD to HQ — aligned with DGRE's IAWNS-S/NATSAT SATCOM direction.</li>
+        <li>100 targets/min of directives is trivially within LoRa duty cycle; the HUD never crosses narrowband tiers.</li>
+    </ul>
+</section>
+
+<!-- 11 INDIA INTEGRATION -->
+<section class="slide">
+    <div class="kicker">Integration into Indian infrastructure</div>
+    <h2>Built to plug into DGRE's world, not replace it</h2>
+    <ul>
+        <li><strong>DGRE (DRDO):</strong> consumes their AWS network and winter advisories to calibrate priors; complements their infrasound/seismic release-detection research — their trigger, our sweep.</li>
+        <li><strong>Army / ITBP:</strong> command node at battalion HQ; directives reach unit rescue teams over existing Tier-2 radios.</li>
+        <li><strong>NDRF / SDRF:</strong> highway and rail avalanche response maps onto PROBE_EXCAVATE directives directly.</li>
+        <li><strong>Regulatory-clean:</strong> marker and LoRa sit inside India's delicensed 865–867 MHz SRD band; DGCA Drone Rules 2021 VLOS-first then exemption path; IMSI module ships disabled pending LEA partnership.</li>
+        <li><strong>Atmanirbhar option set:</strong> ideaForge/Garuda airframes, indigenous GPR partnership, DGRE data partnership for calibration.</li>
+    </ul>
+</section>
+
+<!-- 12 ROADMAP -->
+<section class="slide">
+    <div class="kicker">Roadmap to field truth</div>
+    <h2>The gate is hardware, and we sequenced it honestly</h2>
+    <table>
+        <tr><th>Phase</th><th>Milestone</th><th>Exit criterion</th></tr>
+        <tr><td>Now</td><td>Verified decision core + wire formats + HUD (this repo)</td><td>34/34 tests, E2E directive issuance</td></tr>
+        <tr><td>6.1</td><td>Single-modality bench rig: 457 kHz → adapter → fusion on a sled</td><td>Adapter contract proven on real bytes</td></tr>
+        <tr><td>6.2</td><td>EKF point refinement after grid MAP lock (literature-standard two-stage)</td><td>Sub-meter aim point vs 5 m cell</td></tr>
+        <tr><td>6.3</td><td>GeoTIFF DEM ingestion; field calibration harness for priors</td><td>Priors fitted from real snow-pit truth</td></tr>
+        <tr><td>7</td><td>Infrasound auto-trigger, multi-victim deconfliction, swarm partitioning</td><td>DGRE field benchmark, Siachen/Ladakh trial</td></tr>
+    </table>
+</section>
+
+<!-- 13 RISK HONESTY -->
+<section class="slide">
+    <div class="kicker">Risk honesty</div>
+    <h2>What will try to kill this system — and the answer already in the design</h2>
+    <table>
+        <tr><th>Risk</th><th>Answer in the design</th></tr>
+        <tr><td>Motor EMI blinds beacon search (~6 m on electric drones)</td><td>q_emi attenuation models it; mast mounting rule; per-airframe calibration procedure</td></tr>
+        <tr><td>Wet spring snow kills GPR depth</td><td>Exponential absorption model; Groups A/C still carry shallow victims</td></tr>
+        <tr><td>GNSS multipath in deep gullies</td><td>RTK base on command vehicle; visual-inertial odometry scoped for Phase 7</td></tr>
+        <tr><td>False positives erode operator trust</td><td>High τ_P1, saturation caps, full JSONL reconstruction of any lock</td></tr>
+        <tr><td>−30 °C battery collapse</td><td>Self-heating packs, warm-soak procedures in deployment plan</td></tr>
+    </table>
+</section>
+
+<!-- 14 CLOSE -->
+<section class="slide">
+    <div class="kicker">Thesis</div>
+    <h2>Every minute removed from search time buys <em>points of survival probability</em>.</h2>
+    <p style="max-width: 70ch;">AVALANCHE-VLF removes the two slowest stages of the pipeline — human sweeping and human prioritization — while keeping every decision reproducible enough to defend in an audit.</p>
+    <div class="stat-row">
+        <div class="stat"><div class="num g">Deterministic</div><div class="lbl">No black boxes in triage</div></div>
+        <div class="stat"><div class="num c">Edge-native</div><div class="lbl">Air-gapped by design</div></div>
+        <div class="stat"><div class="num a">DGRE-ready</div><div class="lbl">Bands, doctrine, data partners</div></div>
+    </div>
+    <p style="margin-top:4vh; color:var(--muted);" class="mono">
+        github.com/&lt;your-org&gt;/avalanche-vlf · Apache-2.0 · pytest: 34 passed
+    </p>
+</section>
+
+</div>
+
+<div class="footer-bar">
+    <span>AVALANCHE-VLF · SIH260104 · Disaster Management</span>
+    <span id="counter">1 / 14</span>
+    <span>← → navigate · Home restarts</span>
+</div>
+
+<script>
+const slides = Array.from(document.querySelectorAll(".slide"));
+let index = 0;
+
+function show(i) {
+    index = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, n) => s.classList.toggle("active", n === index));
+    document.getElementById("counter").innerText = `${index + 1} / ${slides.length}`;
+    document.getElementById("progress").style.width =
+        `${((index + 1) / slides.length) * 100}%`;
+}
+
+window.addEventListener("keydown", (e) => {
+    if (["ArrowRight", "PageDown", " "].includes(e.key)) { show(index + 1); e.preventDefault(); }
+    else if (["ArrowLeft", "PageUp"].includes(e.key)) { show(index - 1); e.preventDefault(); }
+    else if (e.key === "Home") { show(0); }
+    else if (e.key === "End") { show(slides.length - 1); }
+});
+document.getElementById("deck").addEventListener("click", () => show(index + 1));
+show(0);
+</script>
+</body>
+</html>

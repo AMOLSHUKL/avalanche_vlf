@@ -1,0 +1,89 @@
+version: 2
+activated_by: "DGRE_SYSTEM_INIT"
+notes: "High-Altitude Himalayan SAR Operational Calibration Matrix"
+
+mission:
+  # Epoch seconds of the avalanche burial event (survival clock origin).
+  # null = anchor to server start time on first launch.
+  incident_epoch_s: null
+  # RF homing marker frequency. Must sit inside the deployment country's
+  # license-exempt SRD band: 865-867 MHz (India), 869.4-869.65 MHz (EU).
+  marker_frequency_mhz: 866.0
+
+grid:
+  width_m: 500.0
+  height_m: 500.0
+  cell_size_m: 5.0
+  origin_lat: 34.183900
+  origin_lon: 77.562100
+  # Last Known Position of the buried subject, in grid cells [x, y].
+  lkp_cell: [50, 40]
+  # LKP Gaussian dispersion (meters) for the spatial prior.
+  lkp_sigma_m: 85.0
+
+thresholds:
+  tau_p1: 0.85
+  tau_p2: 0.45
+  tau_p3: 0.15
+  evidence_decay_factor: 0.96   # per-second retention of group accumulators
+  llr_clamp: 15.0               # posterior log-odds anti-windup bound
+  temporal_window_passes: 4
+  temporal_persistence_bonus: 0.75
+  temporal_decay_penalty: 0.40
+  pass_interval_seconds: 5.0
+  positive_pass_threshold: 0.30
+
+group_caps:
+  GROUP_A_ELECTRONIC: 4.5
+  GROUP_B_SUBSURFACE: 4.2
+  GROUP_C_SURFACE: 2.5
+
+group_weights:
+  GROUP_A_ELECTRONIC: 1.00
+  GROUP_B_SUBSURFACE: 0.95
+  GROUP_C_SURFACE: 0.65
+
+sensor_priors:
+  TRANSCEIVER_457:
+    p_z_given_h: 0.95
+    p_z_given_not_h: 0.02
+    max_range_m: 50.0
+  RECCO:
+    p_z_given_h: 0.89
+    p_z_given_not_h: 0.03
+    max_range_m: 35.0
+  MOBILE_RF:
+    p_z_given_h: 0.82
+    p_z_given_not_h: 0.06
+    max_range_m: 40.0
+  GPR:
+    p_z_given_h: 0.90
+    p_z_given_not_h: 0.07
+    max_depth_m: 6.0
+  SEISMIC_ACOUSTIC:
+    p_z_given_h: 0.72
+    p_z_given_not_h: 0.10
+    max_range_m: 25.0
+  THERMAL_IR:
+    p_z_given_h: 0.86
+    p_z_given_not_h: 0.14
+    max_burial_depth_m: 0.20
+  RGB_VISUAL:
+    p_z_given_h: 0.80
+    p_z_given_not_h: 0.08
+
+environmental_attenuation:
+  snow_water_equivalent_penalty_factor: 0.0028
+  emi_noise_penalty_factor: 0.018
+  wind_dispersion_penalty_factor: 0.022
+  acoustic_noise_floor_penalty: 0.030
+
+survival_model:
+  phase1_max_minutes: 15.0
+  phase1_survival_rate: 0.92
+  phase2_max_minutes: 35.0
+  phase2_drop_rate: 0.65
+  phase2_floor_survival: 0.27
+  phase3_hypo_halflife_minutes: 45.0
+  baseline_minimum_survival: 0.03
+  reference_density_kg_m3: 350.0
