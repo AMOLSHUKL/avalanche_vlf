@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue?style=flat-square)](https://python.org)
 [![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063?style=flat-square)](https://docs.pydantic.dev)
-[![Tests](https://img.shields.io/badge/tests-34%20passing-brightgreen?style=flat-square)](#4-verification)
+[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen?style=flat-square)](#4-verification)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 
 ---
@@ -72,7 +72,7 @@ backend/
     └── simulator.py        # Dual-UAV flight generator, 5-phase state machine
 frontend/                   # Zero-dependency ES6 tactical HUD
 scripts/calibrate_parameters.py   # Post-mission MAP prior calibration
-tests/                      # 34-test verification suite
+tests/                      # 367-test verification suite
 ```
 
 ## 4. Verification
@@ -85,7 +85,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Run the full test suite (34 tests)
+# 2. Run the full test suite (367 tests)
 pytest tests/ -v --tb=short
 
 # 3. Launch the tactical server
