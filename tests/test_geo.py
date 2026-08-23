@@ -18,6 +18,8 @@ from backend.engine.geo import (
     lon_to_utm_zone,
     utm_central_meridian_deg,
     mgrs_latitude_band,
+    mgrs_100km_square_letters,
+    mission_grid_frame_from_latlon,
     normalize_lon_deg,
 )
 
@@ -99,3 +101,79 @@ def test_precision_digits_control_resolution():
     assert len(coarse.split()[2]) == 3
     with pytest.raises(ValueError):
         geodetic_to_mgrs(34.0, 77.0, precision_digits=0)
+
+
+# --- Regression anchors for the 100 km square lettering subsystem ---
+# Expected sequences per NGA TM 8358.1 "AA scheme": each zone set owns an
+# exact 8-letter column block (A-H / J-R / S-Z, no wraparound); row letters
+# cycle A-V minus I,O every 2000 km, even zones offset by 'F'.
+# Known-answer strings cross-checked against reference libmgrs output.
+_LIBMGRS_ANCHORS = [
+    ((34.1839, 77.5621), "43S GT 36122 85514"),
+    ((40.7128, -74.0060), "18T WL 83959 07350"),
+    ((-33.8688, 151.2093), "56H LH 34368 50948"),
+    ((30.0, 89.3), "45R YP 21859 21012"),
+    ((64.84, -147.72), "06W VS 65844 90817"),
+    ((51.5074, -0.1278), "30U XC 99316 10163"),
+    ((-18.92, 47.52), "38K QE 65424 06130"),
+]
+
+
+@pytest.mark.parametrize("point,want", _LIBMGRS_ANCHORS)
+def test_mgrs_known_answer_vectors(point, want):
+    assert geodetic_to_mgrs(*point) == want
+
+
+def test_mgrs_zone_is_zero_padded_for_single_digit_zones():
+    assert geodetic_to_mgrs(64.84, -147.72).startswith("06W VS")
+    assert geodetic_to_mgrs(0.0, 0.0).startswith("31N AA")
+
+
+@pytest.mark.parametrize("zone", range(1, 61))
+@pytest.mark.parametrize("northing", [50_000.0, 1_950_000.0, 3_000_050.0, 6_100_000.0])
+def test_mgrs_square_letters_exhaustive_no_crash_and_known_sequence(zone, northing):
+    letters_by_col = [
+        mgrs_100km_square_letters(zone, col * 100000.0 + 50000.0, northing)[0]
+        for col in range(1, 9)
+    ]
+    zone_set = (zone - 1) % 3
+    expected_block = {0: "ABCDEFGH", 1: "JKLMNPQR", 2: "STUVWXYZ"}[zone_set]
+    assert "".join(letters_by_col) == expected_block
+
+
+@pytest.mark.parametrize("zone,expected_offset", [(43, 0), (44, 5)])
+@pytest.mark.parametrize("row_index", range(0, 20))
+def test_mgrs_row_letters_exhaustive_cycle(zone, expected_offset, row_index):
+    """Every row index must resolve without crashing and follow the A-V minus
+    I,O alphabet with the even-zone 'F' offset; the cycle repeats after 20
+    blocks of northing."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUV"
+    northing = row_index * 100000.0 + 50000.0
+    letter = mgrs_100km_square_letters(zone=zone, easting_m=450000.0, northing_m=northing)[1]
+    assert letter == alphabet[(row_index + expected_offset) % 20]
+    wrapped = mgrs_100km_square_letters(
+        zone=zone, easting_m=450000.0, northing_m=(row_index + 20) * 100000.0 + 50000.0
+    )[1]
+    assert wrapped == letter
+
+
+@pytest.mark.parametrize("easting", [99_999.0, 0.0, 1_000_001.0])
+def test_mgrs_square_letters_reject_invalid_easting(easting):
+    with pytest.raises(ValueError):
+        mgrs_100km_square_letters(zone=43, easting_m=easting, northing_m=50_000.0)
+
+
+@pytest.mark.parametrize("northing", [9_400_000.0, 12_000_000.0])
+def test_utm_to_geodetic_rejects_out_of_band_output(northing):
+    with pytest.raises(ValueError):
+        utm_to_geodetic(zone=43, is_north=True, easting_m=500_000.0, northing_m=northing)
+
+
+def test_mission_grid_frame_matches_origin_conversion():
+    frame = mission_grid_frame_from_latlon(34.1839, 77.5621)
+    assert frame.zone == 43
+    assert frame.band == "S"
+    assert frame.square == "GT"
+    utm = geodetic_to_utm(34.1839, 77.5621)
+    assert frame.origin_easting_m == utm.easting_m
+    assert frame.origin_northing_m == utm.northing_m

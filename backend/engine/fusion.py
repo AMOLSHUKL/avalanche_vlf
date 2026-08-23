@@ -18,10 +18,10 @@ from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional, Any
 
 from backend.config.loader import ConfigLoader
-from backend.engine.geo import geodetic_to_mgrs
+from backend.engine.geo import geodetic_to_mgrs, mission_grid_frame_from_latlon
 from backend.engine.logger import TelemetryFineTuneLogger
+from backend.engine.ports import MissionEventSink
 from backend.engine.terrain import TerrainEngine
-from backend.telemetry.lora_packet import mission_grid_frame_from_latlon
 from backend.schemas.sensors import BaseSensorPayload, GPRPayload
 from backend.schemas.domain import (
     GridZoneState,
@@ -45,7 +45,11 @@ def latlon_to_mgrs(lat: float, lon: float) -> str:
 
 
 class FusionEngine:
-    def __init__(self, config_loader: Optional[ConfigLoader] = None):
+    def __init__(
+        self,
+        config_loader: Optional[ConfigLoader] = None,
+        logger: Optional[MissionEventSink] = None,
+    ):
         self.config_loader = config_loader or ConfigLoader()
         grid_cfg = self.config_loader.config["grid"]
         self.terrain = TerrainEngine(
@@ -53,7 +57,7 @@ class FusionEngine:
             height_m=float(grid_cfg["height_m"]),
             cell_size_m=float(grid_cfg["cell_size_m"]),
         )
-        self.logger = TelemetryFineTuneLogger()
+        self.logger: MissionEventSink = logger or TelemetryFineTuneLogger()
 
         # Mission clock: survival time is measured from the avalanche incident,
         # not from server start. Config may pin the incident epoch for replay.
@@ -196,7 +200,13 @@ class FusionEngine:
             )
             self._last_update_monotonic[zone_id] = now_mono
 
-            # 2. Capped, weighted intra-group normalization
+            # 2. Capped, weighted intra-group normalization.
+            #    Cross-group aggregation assumes the three evidence groups
+            #    (electronic, subsurface, surface) are conditionally
+            #    independent given victim presence: physically distinct
+            #    sensing channels (EM flux vs ground wave vs thermal/optical).
+            #    Naive-Bayes log-odds fusion is exact only under that
+            #    assumption; correlated modalities would overcount evidence.
             aggregate_group_llr_sum = 0.0
             group_llr_snapshot: Dict[str, float] = {}
             for g_name, raw_score in scores.items():
@@ -345,13 +355,8 @@ class FusionEngine:
 
         On flat cells (zero gradient) the result defaults to due East (90 deg).
         """
-        cy_min = max(0, cell_y - 1)
-        cy_max = min(self.rows - 1, cell_y + 1)
-        cx_min = max(0, cell_x - 1)
-        cx_max = min(self.cols - 1, cell_x + 1)
-
-        dz_dy = (float(self.terrain.elevation_grid[cy_max, cell_x]) - float(self.terrain.elevation_grid[cy_min, cell_x])) / (2.0 * self.terrain.cell_size_m)
-        dz_dx = (float(self.terrain.elevation_grid[cell_y, cx_max]) - float(self.terrain.elevation_grid[cell_y, cx_min])) / (2.0 * self.terrain.cell_size_m)
+        dz_dx = float(self.terrain.grad_dx[cell_y, cell_x])
+        dz_dy = float(self.terrain.grad_dy[cell_y, cell_x])
 
         # Compass bearing of the gradient (up-slope), clockwise from North.
         fall_line_bearing_deg = math.degrees(math.atan2(dz_dx, dz_dy)) % 360.0

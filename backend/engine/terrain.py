@@ -14,9 +14,9 @@ class TerrainEngine:
         self.cell_size_m = cell_size_m
         self.cols = int(round(width_m / cell_size_m))
         self.rows = int(round(height_m / cell_size_m))
-        self.elevation_grid, self.slope_grid = self._generate_dem()
+        self.elevation_grid, self.slope_grid, self.grad_dx, self.grad_dy = self._generate_dem()
 
-    def _generate_dem(self) -> Tuple[np.ndarray, np.ndarray]:
+    def _generate_dem(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # Sample at cell centers: spacing equals cell_size_m exactly, so the
         # finite-difference gradient below carries no spacing bias.
         x = (np.arange(self.cols) + 0.5) * self.cell_size_m
@@ -28,7 +28,7 @@ class TerrainEngine:
         dy, dx = np.gradient(elevation, self.cell_size_m, self.cell_size_m)
         slope_rad = np.arctan(np.hypot(dx, dy))
         slope_deg = np.degrees(slope_rad)
-        return elevation, slope_deg
+        return elevation, slope_deg, dx, dy
 
     def compute_prior_prob(
         self,

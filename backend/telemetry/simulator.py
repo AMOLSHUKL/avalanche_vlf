@@ -20,9 +20,19 @@ from backend.schemas.domain import UAVAssetTelemetry, MissionPhaseEnum
 
 
 class TelemetrySimulator:
-    def __init__(self, origin_lat: float = 34.183900, origin_lon: float = 77.562100):
+    def __init__(
+        self,
+        origin_lat: float = 34.183900,
+        origin_lon: float = 77.562100,
+        width_m: float = 500.0,
+        height_m: float = 500.0,
+        cell_size_m: float = 5.0,
+    ):
         self.origin_lat = origin_lat
         self.origin_lon = origin_lon
+        self.width_m = width_m
+        self.height_m = height_m
+        self.cell_size_m = cell_size_m
 
         # Ground Truth Targets:
         # Target 1: Equipped victim (Transceiver + GPR + Micro-Doppler Respiration + Mobile RF)
@@ -102,14 +112,14 @@ class TelemetrySimulator:
             mission_phase = self._determine_mission_phase()
 
             # UAV Alpha: South-to-Mid Sector Sweep (Carries 457kHz, Thermal, Optical, Mobile RF)
-            uav1_x = (t * 8.0) % 500.0
-            uav1_y = 40.0 + ((int(t * 8.0 / 500.0) * 30.0) % 220.0)
+            uav1_x = (t * 8.0) % self.width_m
+            uav1_y = (0.08 * self.height_m) + ((int(t * 8.0 / self.width_m) * 30.0) % (0.44 * self.height_m))
             uav1_lat = self.origin_lat + (uav1_y / 111111.0)
             uav1_lon = self.origin_lon + (uav1_x / (111111.0 * math.cos(math.radians(self.origin_lat))))
 
             # UAV Bravo: North-to-Mid Sector Sweep (Carries UWB GPR, Seismic, RECCO)
-            uav2_x = 500.0 - ((t * 7.5) % 500.0)
-            uav2_y = 250.0 + ((int(t * 7.5 / 500.0) * 35.0) % 220.0)
+            uav2_x = self.width_m - ((t * 7.5) % self.width_m)
+            uav2_y = (0.50 * self.height_m) + ((int(t * 7.5 / self.width_m) * 35.0) % (0.44 * self.height_m))
             uav2_lat = self.origin_lat + (uav2_y / 111111.0)
             uav2_lon = self.origin_lon + (uav2_x / (111111.0 * math.cos(math.radians(self.origin_lat))))
 
@@ -139,8 +149,8 @@ class TelemetrySimulator:
             ]
 
             sensor_events: List[Dict[str, Any]] = []
-            c1_x, c1_y = int(uav1_x / 5.0), int(uav1_y / 5.0)
-            c2_x, c2_y = int(uav2_x / 5.0), int(uav2_y / 5.0)
+            c1_x, c1_y = int(uav1_x / self.cell_size_m), int(uav1_y / self.cell_size_m)
+            c2_x, c2_y = int(uav2_x / self.cell_size_m), int(uav2_y / self.cell_size_m)
 
             # --- UAV ALPHA SENSING (Group A & Group C) ---
             for v in self.true_victims:
@@ -252,7 +262,9 @@ class TelemetrySimulator:
 
             # Transient Low-Confidence Radar Clutter Pulse (Bedrock/Ice Void Clutter)
             if random.random() < 0.08:
-                noise_x, noise_y = random.randint(0, 99), random.randint(0, 99)
+                max_col = int(self.width_m / self.cell_size_m) - 1
+                max_row = int(self.height_m / self.cell_size_m) - 1
+                noise_x, noise_y = random.randint(0, max_col), random.randint(0, max_row)
                 sensor_events.append({
                     "target_cell": (noise_x, noise_y),
                     "payload": GPRPayload(

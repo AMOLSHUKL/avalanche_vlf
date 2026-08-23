@@ -4,17 +4,22 @@ Filed from reflect session 2026-08-22. Skill-description tunes were declined;
 their substance is preserved here as project-level mechanisms instead.
 
 ## Test infrastructure
-- [ ] `tests/conftest.py`: shared fixture yielding a context-managed `TestClient`
+- [x] `tests/conftest.py`: shared fixture yielding a context-managed `TestClient`
       (lifespan only runs under `with`) + a `drain_until(ws, predicate)` helper so
       no test sleeps fixed amounts waiting for WebSocket frames.
+      (Closed: both exist in tests/conftest.py.)
 - [ ] `pyproject.toml`: `filterwarnings` entry for the known-noise pytest-asyncio
       deprecation (`asyncio.get_event_loop_policy`) under Python 3.14.
-- [ ] Parametrized known-answer vectors transcribed from published references
+- [x] Parametrized known-answer vectors transcribed from published references
       (NGA TM 8358.1 worked examples) into `test_geo.py`, beyond null-island +
       round-trip closure.
-- [ ] Unit tests pinning the east-over-north bearing convention
+      (Closed 2026-08-22: `_LIBMGRS_ANCHORS` + exhaustive zone/row sweeps in
+      test_geo.py, cross-checked against reference libmgrs; see audit #1.)
+- [x] Unit tests pinning the east-over-north bearing convention
       (`atan2(dz_dx, dz_dy)`) and LoRa offset raise-not-wrap boundaries (raise
       case covered; add positive boundary 0 and 65535).
+      (Closed 2026-08-22: boundary-bearing test + full uint16 offset range in
+      test_fusion.py / test_lora_packet.py.)
 
 ## Consumer-boundary reliability
 - [ ] HUD staleness indicator: telemetry frames carry server timestamps; the HUD
@@ -26,8 +31,10 @@ their substance is preserved here as project-level mechanisms instead.
 - [ ] Startup test asserting CORS is not credentials+wildcard.
 - [ ] Central task-spawn helper (strong-ref set + done-callback) reused by any
       future fire-and-forget `asyncio.create_task` call sites.
-- [ ] Copy-on-read check for `ConfigLoader.config` consumers (or typed snapshot
+- [x] Copy-on-read check for `ConfigLoader.config` consumers (or typed snapshot
       getters everywhere).
+      (Closed 2026-08-22: all accessors return deep copies; mutation-isolation
+      tests in test_config_validation.py. See audit #10.)
 
 ## Project knowledge capture
 - [ ] CONTEXT.md / domain glossary: server-owns-time rule (incident_epoch_s,

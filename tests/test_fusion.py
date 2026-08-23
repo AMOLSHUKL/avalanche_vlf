@@ -185,23 +185,24 @@ def test_rescuer_hazard_monotonicity(system_fixture):
 
 def test_safe_approach_azimuth_is_contour_perpendicular(system_fixture):
     """Approach heading must be perpendicular (dot product ~ 0) to the terrain
-    gradient expressed in compass-frame components (East, North)."""
+    gradient expressed in compass-frame components (East, North), including on
+    grid-boundary cells where one-sided differencing applies."""
     import math as _math
+    import numpy as _np
 
     engine, _, _ = system_fixture
     terrain = engine.terrain
 
-    for cx, cy in [(10, 10), (25, 25), (45, 35), (70, 60), (90, 90)]:
-        cy_min, cy_max = max(0, cy - 1), min(terrain.rows - 1, cy + 1)
-        cx_min, cx_max = max(0, cx - 1), min(terrain.cols - 1, cx + 1)
-        dz_dy = (
-            float(terrain.elevation_grid[cy_max, cx])
-            - float(terrain.elevation_grid[cy_min, cx])
-        ) / (2.0 * terrain.cell_size_m)
-        dz_dx = (
-            float(terrain.elevation_grid[cy, cx_max])
-            - float(terrain.elevation_grid[cy, cx_min])
-        ) / (2.0 * terrain.cell_size_m)
+    # Independent ground truth: np.gradient applies proper one-sided
+    # differencing at edges, unlike a naive centered-difference port.
+    grad_dy, grad_dx = _np.gradient(
+        terrain.elevation_grid, terrain.cell_size_m, terrain.cell_size_m
+    )
+
+    for cx, cy in [(0, 0), (0, 50), (99, 50), (50, 99),
+                   (10, 10), (25, 25), (45, 35), (70, 60), (90, 90)]:
+        dz_dy = float(grad_dy[cy, cx])
+        dz_dx = float(grad_dx[cy, cx])
 
         approach_deg = engine._calculate_safe_approach_azimuth(cx, cy)
         rad = _math.radians(approach_deg)
@@ -211,6 +212,28 @@ def test_safe_approach_azimuth_is_contour_perpendicular(system_fixture):
         dot = (dz_dx * ux + dz_dy * uy) / grad_norm
         assert abs(dot) < 1e-9, f"approach not contour-parallel at cell ({cx},{cy}): dot={dot}"
         assert 0.0 <= approach_deg < 360.0
+
+
+def test_boundary_azimuth_uses_true_one_sided_gradient(system_fixture):
+    """Regression: boundary cells previously halved only one gradient axis,
+    corrupting the bearing itself. The angle must equal atan2 of np.gradient's
+    own components, not merely stay perpendicular under mis-scaling."""
+    import numpy as _np
+
+    engine, _, _ = system_fixture
+    terrain = engine.terrain
+    grad_dy, grad_dx = _np.gradient(
+        terrain.elevation_grid, terrain.cell_size_m, terrain.cell_size_m
+    )
+
+    for cx, cy in [(0, 0), (0, 50), (99, 0), (99, 99), (50, 99)]:
+        expected = (
+            _np.degrees(_np.arctan2(float(grad_dx[cy, cx]), float(grad_dy[cy, cx]))) % 360.0
+            + 90.0
+        ) % 360.0
+        got = engine._calculate_safe_approach_azimuth(cx, cy)
+        delta = min(abs(got - expected), 360.0 - abs(got - expected))
+        assert delta < 1e-9, f"boundary bearing wrong at ({cx},{cy}): {got} != {expected}"
 
 
 def test_mgrs_matches_true_geodetic_conversion(system_fixture):

@@ -90,3 +90,58 @@ def test_unknown_sensor_priors_fail_loudly(isolated_loader):
     loader, _ = isolated_loader
     with pytest.raises(KeyError):
         loader.get_sensor_priors("UNREGISTERED_SENSOR")
+
+
+def test_origin_lat_outside_utm_band_rejected(tmp_path):
+    """origin_lat=87 passes a naive [-90, 90] check but explodes inside grid
+    construction; the config boundary must reject it up front."""
+    cfg = tmp_path / "bad_origin.yaml"
+    with open("config/fusion_parameters.yaml", "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    data["grid"]["origin_lat"] = 87.0
+    _write_cfg(cfg, data)
+
+    ConfigLoader.reset_instance()
+    try:
+        with pytest.raises(ConfigValidationError, match=r"\[-80, 84\]"):
+            ConfigLoader(config_path=str(cfg))
+    finally:
+        ConfigLoader.reset_instance()
+
+
+def test_origin_lat_accepts_full_operational_band(tmp_path):
+    cfg = tmp_path / "edge_origin.yaml"
+    with open("config/fusion_parameters.yaml", "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    data["grid"]["origin_lat"] = -80.0
+    _write_cfg(cfg, data)
+
+    ConfigLoader.reset_instance()
+    try:
+        loader = ConfigLoader(config_path=str(cfg))
+        assert loader.config["grid"]["origin_lat"] == -80.0
+    finally:
+        ConfigLoader.reset_instance()
+
+
+def test_config_accessors_return_copies(isolated_loader):
+    loader, _ = isolated_loader
+    version_before = loader.config["version"]
+
+    snapshot = loader.config
+    snapshot["thresholds"]["tau_p1"] = 0.11
+    snapshot["grid"]["cell_size_m"] = 999.0
+    assert loader.get_thresholds()["tau_p1"] == 0.85
+    assert loader.config["version"] == version_before
+
+    thresholds = loader.get_thresholds()
+    thresholds["tau_p2"] = 0.01
+    assert loader.get_thresholds()["tau_p2"] == 0.45
+
+    caps = loader.get_group_caps()
+    caps["GROUP_A_ELECTRONIC"] = -5.0
+    assert loader.get_group_caps()["GROUP_A_ELECTRONIC"] == 4.5
+
+    priors = loader.get_sensor_priors("GPR")
+    priors["p_z_given_h"] = 0.001
+    assert loader.get_sensor_priors("GPR")["p_z_given_h"] == 0.90

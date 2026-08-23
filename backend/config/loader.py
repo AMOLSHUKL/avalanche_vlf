@@ -61,7 +61,8 @@ def _validate_config(data: Dict[str, Any]) -> None:
              "grid.width_m and grid.height_m must be integer multiples of grid.cell_size_m")
     origin_lat = _as_float(grid.get("origin_lat"), "grid.origin_lat")
     origin_lon = _as_float(grid.get("origin_lon"), "grid.origin_lon")
-    _require(-90.0 <= origin_lat <= 90.0, "grid.origin_lat out of range [-90, 90]")
+    _require(-80.0 <= origin_lat <= 84.0,
+             "grid.origin_lat out of range [-80, 84] (UTM/MGRS operational limit)")
     _require(-180.0 <= origin_lon <= 180.0, "grid.origin_lon out of range [-180, 180]")
 
     sigma = _as_float(grid.get("lkp_sigma_m", 85.0), "grid.lkp_sigma_m")
@@ -233,28 +234,28 @@ class ConfigLoader:
 
     @property
     def config(self) -> Dict[str, Any]:
-        """Live configuration view. Treat as read-only; mutations bypass validation."""
+        """Validated configuration snapshot. Mutations never reach engine state."""
         with self._lock:
-            return self._config_data
+            return copy.deepcopy(self._config_data)
 
     def get_thresholds(self) -> Dict[str, float]:
         with self._lock:
-            return self._config_data.get("thresholds", {})
+            return copy.deepcopy(self._config_data.get("thresholds", {}))
 
     def get_group_caps(self) -> Dict[str, float]:
         with self._lock:
-            return self._config_data.get("group_caps", {})
+            return copy.deepcopy(self._config_data.get("group_caps", {}))
 
     def get_group_weights(self) -> Dict[str, float]:
         with self._lock:
-            return self._config_data.get("group_weights", {})
+            return copy.deepcopy(self._config_data.get("group_weights", {}))
 
     def get_sensor_priors(self, sensor_type: Union[str, Enum]) -> Dict[str, float]:
         with self._lock:
             key = sensor_type.value if isinstance(sensor_type, Enum) else str(sensor_type)
             priors = self._config_data.get("sensor_priors", {})
             if key in priors:
-                return priors[key]
+                return copy.deepcopy(priors[key])
             raise KeyError(
                 f"No sensor priors configured for '{key}'. "
                 "Refusing to fuse evidence from an uncalibrated modality."

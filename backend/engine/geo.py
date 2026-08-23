@@ -23,8 +23,17 @@ Conventions:
 
 Verification anchors used by tests/test_geo.py:
     - geodetic_to_mgrs(0.0, 0.0) == "31N AA 66021 00000"
+    - Known-answer vectors cross-checked against the reference libmgrs /
+      NGA TM 8358.1 implementation (e.g. New York "18T WL", London
+      "30U XC", Fairbanks "06W VS").
     - Points on a zone central meridian project to easting exactly 500000.
     - Forward/inverse round trips close to sub-millimeter across all bands.
+
+Known limitation: the MGRS Norway (32V) and Svalbard (31X/33X/35X/37X)
+zone-override exceptions are not implemented; longitudes inside those
+override windows north of 56N resolve via their regular UTM zone instead.
+Outside the override regions this module matches libmgrs on an exhaustive
+60-zone sweep (see tests/test_geo.py).
 """
 from __future__ import annotations
 
@@ -46,13 +55,13 @@ _SOUTH_FALSE_NORTHING_M = 10000000.0
 _LAT_MIN_DEG = -80.0
 _LAT_MAX_DEG = 84.0
 
-# MGRS alphabets per NGA TM 8358.1 (letters I and O are never used).
-_MGRS_COLUMN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWX"   # 24 letters, cycles every 3 zones
-_MGRS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTV"         # 20 letters, cycles every 2000 km
+# MGRS 100 km square lettering per NGA TM 8358.1 (letters I and O are never
+# used). Column letters come from three zone-set-specific 8-letter blocks
+# covering easting columns 1..8 exactly; there is no cyclic wraparound.
+_MGRS_COLUMN_BLOCKS = {0: "ABCDEFGH", 1: "JKLMNPQR", 2: "STUVWXYZ"}
 
-# First column letter index per zone set: zones 1,4,7.. start 'A';
-# zones 2,5,8.. start 'J'; zones 3,6,9.. start 'S'.
-_MGRS_SET_START_INDEX = {0: 0, 1: 8, 2: 18}
+# Row letters cycle every 2000 km through A-V minus I and O (20 letters).
+_MGRS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUV"
 
 # Latitude bands, 8 deg each from -80 (C) to 84 (X).
 _MGRS_BAND_ALPHABET = "CDEFGHJKLMNPQRSTUVWX"
@@ -206,6 +215,11 @@ def utm_to_geodetic(zone: int, is_north: bool, easting_m: float, northing_m: flo
                * d**5 / 120.0) / cos_phi1
 
     lat_deg = math.degrees(lat_rad)
+    if not _LAT_MIN_DEG <= lat_deg <= _LAT_MAX_DEG:
+        raise ValueError(
+            f"Derived latitude {lat_deg} outside UTM coverage "
+            f"[{_LAT_MIN_DEG}, {_LAT_MAX_DEG}] - corrupt or invalid input."
+        )
     lon_deg = normalize_lon_deg(utm_central_meridian_deg(zone) + math.degrees(lon_rad))
     return lat_deg, lon_deg
 
@@ -219,21 +233,42 @@ def mgrs_latitude_band(lat_deg: float) -> str:
     return _MGRS_BAND_ALPHABET[idx]
 
 
-def _mgrs_100km_square_letters(zone: int, easting_m: float, northing_m: float) -> tuple[str, str]:
+def mgrs_100km_square_letters(zone: int, easting_m: float, northing_m: float) -> tuple[str, str]:
     """Return the (column, row) 100 km square letters for a UTM position."""
-    zone_set = (zone - 1) % 3
-    start = _MGRS_SET_START_INDEX[zone_set]
-
     col_index = int(easting_m // 100000.0)          # 1..8 within a valid UTM easting
     if not 1 <= col_index <= 8:
         raise ValueError(f"Easting {easting_m} outside valid UTM range.")
-    col_letter = _MGRS_COLUMN_ALPHABET[(start + col_index - 1) % 24]
+    col_block = _MGRS_COLUMN_BLOCKS[(zone - 1) % 3]
+    col_letter = col_block[col_index - 1]
 
     row_offset = 5 if zone % 2 == 0 else 0          # even zones start at 'F'
-    row_index = int(northing_m // 100000.0) % 20
-    row_letter = _MGRS_ROW_ALPHABET[(row_index + row_offset) % 20]
+    row_index = int(northing_m // 100000.0) % len(_MGRS_ROW_ALPHABET)
+    row_letter = _MGRS_ROW_ALPHABET[(row_index + row_offset) % len(_MGRS_ROW_ALPHABET)]
 
     return col_letter, row_letter
+
+
+@dataclass(frozen=True)
+class MissionGridFrame:
+    """Shared georeference for one incident: origin + MGRS square identity."""
+    zone: int
+    band: str
+    square: str          # two-letter 100 km square, e.g. "GT"
+    origin_easting_m: float
+    origin_northing_m: float
+
+
+def mission_grid_frame_from_latlon(lat: float, lon: float) -> MissionGridFrame:
+    """Build the mission georeference from the grid origin lat/lon."""
+    utm = geodetic_to_utm(lat, lon)
+    col_letter, row_letter = mgrs_100km_square_letters(utm.zone, utm.easting_m, utm.northing_m)
+    return MissionGridFrame(
+        zone=utm.zone,
+        band=mgrs_latitude_band(lat),
+        square=f"{col_letter}{row_letter}",
+        origin_easting_m=utm.easting_m,
+        origin_northing_m=utm.northing_m,
+    )
 
 
 def geodetic_to_mgrs(lat_deg: float, lon_deg: float, precision_digits: int = 5) -> str:
@@ -248,13 +283,13 @@ def geodetic_to_mgrs(lat_deg: float, lon_deg: float, precision_digits: int = 5) 
 
     utm = geodetic_to_utm(lat_deg, lon_deg)
     band = mgrs_latitude_band(lat_deg)
-    col_letter, row_letter = _mgrs_100km_square_letters(utm.zone, utm.easting_m, utm.northing_m)
+    col_letter, row_letter = mgrs_100km_square_letters(utm.zone, utm.easting_m, utm.northing_m)
 
     divisor = 10.0 ** (5 - precision_digits)
     east_suffix = int(math.floor(utm.easting_m % 100000.0 / divisor))
     north_suffix = int(math.floor(utm.northing_m % 100000.0 / divisor))
 
     return (
-        f"{utm.zone}{band} {col_letter}{row_letter} "
+        f"{utm.zone:02d}{band} {col_letter}{row_letter} "
         f"{east_suffix:0{precision_digits}d} {north_suffix:0{precision_digits}d}"
     )

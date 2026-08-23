@@ -52,6 +52,41 @@ def test_invalid_parameter_hotswap_returns_422(client):
     assert "rejected parameter update" in response.json()["detail"]
 
 
+def test_hotswap_rejects_non_mapping_parameter_payload(client):
+    response = client.put(
+        "/api/config/fusion-parameters",
+        json={"parameters": "not-a-mapping", "activated_by": "TEST"},
+    )
+    assert response.status_code == 422
+
+
+def test_hotswap_rejects_deeply_nested_type_violations(client):
+    """Adversarial payloads must die at the config boundary, not inside the
+    fusion engine's arithmetic."""
+    for parameters in (
+        {"grid": {"origin_lat": {"nested": {"junk": [1, 2, 3]}}}},
+        {"grid": {"origin_lat": None}},
+        {"sensor_priors": {"GPR": {"p_z_given_h": "high"}}},
+        {"thresholds": {"evidence_decay_factor": 1.5}},
+        {"group_caps": "GROUP_A_ELECTRONIC"},
+    ):
+        response = client.put(
+            "/api/config/fusion-parameters",
+            json={"parameters": parameters, "activated_by": "ADVERSARIAL"},
+        )
+        assert response.status_code == 422, f"payload accepted: {parameters!r}"
+
+
+def test_websocket_tolerates_garbage_client_frames(client):
+    """A misbehaving HUD client sending junk must not kill its telemetry
+    session: frames keep flowing after invalid input."""
+    with client.websocket_connect("/ws/telemetry") as ws:
+        ws.send_text("this is not json")
+        ws.send_json({"unexpected": "shape"})
+        frame = drain_until(ws, lambda f: f.get("type") == "telemetry_frame")
+        assert frame["mission_phase"]
+
+
 def test_search_map_exposes_mission_clock(client):
     response = client.get("/api/search-map")
     assert response.status_code == 200

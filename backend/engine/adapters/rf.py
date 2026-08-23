@@ -41,7 +41,10 @@ class SimulatedRFAdapter(BaseSensorAdapter):
         if isinstance(payload, TransceiverPayload):
             dist = payload.estimated_distance_m
             max_range = self.config_loader.get_sensor_priors("TRANSCEIVER_457").get("max_range_m", 50.0)
-            q_dist = 1.0 / (1.0 + (dist / (max_range * 0.5)) ** 2)
+            # 457 kHz induction operates in the magnetic near field, where
+            # flux-line coupling falls off as r^-3 (dipole regime), not the
+            # far-field r^-2 of radiating systems.
+            q_dist = 1.0 / (1.0 + (dist / (max_range * 0.5)) ** 3)
             return max(0.05, min(1.0, q_emi * q_dist))
 
         elif isinstance(payload, RECCOPayload):

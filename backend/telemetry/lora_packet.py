@@ -30,9 +30,8 @@ import struct
 from dataclasses import dataclass
 
 from backend.engine.geo import (
+    MissionGridFrame,
     geodetic_to_utm,
-    mgrs_latitude_band,
-    _mgrs_100km_square_letters,
 )
 from backend.schemas.domain import TacticalDirective
 
@@ -52,29 +51,6 @@ def compute_crc16(data: bytes) -> int:
             else:
                 crc = (crc << 1) & 0xFFFF
     return crc
-
-
-@dataclass(frozen=True)
-class MissionGridFrame:
-    """Shared georeference for one incident: origin + MGRS square identity."""
-    zone: int
-    band: str
-    square: str          # two-letter 100 km square, e.g. "GT"
-    origin_easting_m: float
-    origin_northing_m: float
-
-
-def mission_grid_frame_from_latlon(lat: float, lon: float) -> MissionGridFrame:
-    """Build the mission georeference from the grid origin lat/lon."""
-    utm = geodetic_to_utm(lat, lon)
-    col_letter, row_letter = _mgrs_100km_square_letters(utm.zone, utm.easting_m, utm.northing_m)
-    return MissionGridFrame(
-        zone=utm.zone,
-        band=mgrs_latitude_band(lat),
-        square=f"{col_letter}{row_letter}",
-        origin_easting_m=utm.easting_m,
-        origin_northing_m=utm.northing_m,
-    )
 
 
 @dataclass(frozen=True)
@@ -175,7 +151,7 @@ class LoRaTargetPacket:
         abs_easting = grid_frame.origin_easting_m + self.east_offset_m
         abs_northing = grid_frame.origin_northing_m + self.north_offset_m
         return (
-            f"{grid_frame.zone}{grid_frame.band} {grid_frame.square} "
+            f"{grid_frame.zone:02d}{grid_frame.band} {grid_frame.square} "
             f"{int(round(abs_easting)) % 100000:05d} {int(round(abs_northing)) % 100000:05d}"
         )
 
@@ -189,10 +165,13 @@ class LoRaTargetPacket:
         void_detected: bool = False,
     ) -> "LoRaTargetPacket":
         """Construct a LoRaTargetPacket from a directive and mission georeference."""
-        cx, cy = 0, 0
         parts = directive.target_zone_id.replace("cell_", "").split("_")
-        if len(parts) == 2:
-            cx, cy = int(parts[0]), int(parts[1])
+        if len(parts) != 2 or not all(part.isdigit() for part in parts):
+            raise ValueError(
+                f"Malformed target_zone_id, cannot derive cell coordinates: "
+                f"{directive.target_zone_id!r}"
+            )
+        cx, cy = int(parts[0]), int(parts[1])
 
         utm_origin = geodetic_to_utm(directive.lat, directive.lon)
         east_offset = int(round(utm_origin.easting_m - grid_frame.origin_easting_m))

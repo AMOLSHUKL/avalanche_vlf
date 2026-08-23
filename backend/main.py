@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from backend.config.loader import ConfigLoader
 from backend.engine.fusion import FusionEngine
 from backend.engine.adapters.registry import AdapterRegistry
+from backend.engine.logger import TelemetryFineTuneLogger
 from backend.schemas.sensors import SensorTypeEnum
 from backend.telemetry.simulator import TelemetrySimulator
 
@@ -62,13 +63,17 @@ class ConnectionManager:
                 self.disconnect(ws)
 
 
-# Global singletons
+# Global singletons; concrete adapters wired at the composition root.
 config_loader = ConfigLoader()
 adapter_registry = AdapterRegistry(config_loader)
-fusion_engine = FusionEngine(config_loader)
+_grid_cfg = config_loader.config["grid"]
+fusion_engine = FusionEngine(config_loader, logger=TelemetryFineTuneLogger())
 simulator = TelemetrySimulator(
-    origin_lat=float(config_loader.config["grid"]["origin_lat"]),
-    origin_lon=float(config_loader.config["grid"]["origin_lon"]),
+    origin_lat=float(_grid_cfg["origin_lat"]),
+    origin_lon=float(_grid_cfg["origin_lon"]),
+    width_m=float(_grid_cfg["width_m"]),
+    height_m=float(_grid_cfg["height_m"]),
+    cell_size_m=float(_grid_cfg["cell_size_m"]),
 )
 manager = ConnectionManager(max_buffer_size=5)
 background_task: asyncio.Task | None = None
@@ -184,7 +189,9 @@ async def inject_failure(req: FailureInjectionRequest):
 @app.put("/api/config/fusion-parameters")
 async def update_fusion_parameters(req: ParameterUpdateRequest):
     try:
-        new_ver = config_loader.update_parameters_in_memory(req.parameters, req.activated_by)
+        new_ver = await asyncio.to_thread(
+            config_loader.update_parameters_in_memory, req.parameters, req.activated_by
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"status": "SUCCESS", "new_version": new_ver}
@@ -200,4 +207,5 @@ async def websocket_telemetry(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception:
+        logger.exception("WebSocket telemetry session terminated unexpectedly")
         manager.disconnect(websocket)
