@@ -79,8 +79,8 @@ tests/                      # 367-test verification suite
 
 ```bash
 # 1. Clone and set up
-git clone https://github.com/<your-org>/avalanche-vlf.git
-cd avalanche-vlf
+git clone https://github.com/AMOLSHUKL/avalanche_vlf.git
+cd avalanche_vlf
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
