@@ -4,14 +4,25 @@
 
 ---
 
+## Part 0: Recording Checklist (read before every run)
+
+Victim placement and cell coordinates are generated per mission seed — **never narrate hardcoded cell IDs or MGRS strings**. Read every number off the live screen. Verify these before recording or presenting:
+
+- [ ] `venv/bin/python -m pytest tests/ -q` → all pass
+- [ ] Fresh server state: delete stale `logs/sar_mission_*.jsonl`, restart uvicorn, open `http://localhost:8000/frontend/index.html`
+- [ ] Link pill shows **LINK LIVE** (if it reads STALE/OFFLINE, the WebSocket died — restart before recording)
+- [ ] Browser zoom set so grid + triage queue + fault console are visible in one frame
+- [ ] Screen recorder captures 1080p; do a 10 s dry run first
+
 ## Part 1: 5-Minute Live Demonstration Script
 
 ### Setup & Initial Screen State (0:00 – 0:45)
 1. **Launch Server & Open UI:**
-   * Open `http://localhost:8000/frontend/index.html` on a primary display.
+   * Open `http://localhost:8000/frontend/index.html` on the primary display.
 2. **Point Out High-Altitude Grid & Header:**
-   * **Grid Viewport:** High-resolution $500\text{m} \times 500\text{m}$ grid (Ladakh Sector-4, UTM Zone 43S).
-   * **HUD Elements:** 15-Minute Asphyxiation Countdown timer ticking down with real-time $P(\text{Survival})$ calculated at $92.0\%$.
+   * **Grid Viewport:** High-resolution 500 m × 500 m grid (Ladakh Sector, UTM Zone 43S).
+   * **HUD Elements:** 15-Minute Asphyxiation Countdown ticking down with real-time P(Survival) starting at ~92%.
+   * **Link Pill:** top-right telemetry link indicator — LIVE now; we return to it in Scenario D.
    * **Swarm Asset Overlays:** UAV-Alpha (Cyan) and UAV-Bravo (Purple) performing autonomous lawnmower search sweeps.
 
 ---
@@ -19,36 +30,41 @@
 ### Scenario A: Baseline & Terrain Prioritization (0:45 – 1:45)
 * **Action:** Direct attention to the North-Up 2D canvas.
 * **Explanation:**
-  > *"Notice that prior to sensor contact, search cells are initialized via an analytical Digital Elevation Model (DEM) of the Himalayan avalanche gully. The engine computes contextual prior probabilities based on slope inclination ($\theta$) and Gaussian dispersion from the Last Known Position (LKP). Cells in the $15^\circ\text{--}32^\circ$ runout catchment basin receive higher baseline priors ($P_0 = 0.95$), while sheer cliffs ($>45^\circ$) are suppressed to $P_0 = 0.05$. All unscanned cells remain at baseline Priority 4 without artificial false alarms."*
+  > *"Prior to sensor contact, search cells are initialized via an analytical Digital Elevation Model (DEM) of the Himalayan avalanche gully. The engine computes contextual prior probabilities based on slope inclination and Gaussian dispersion from the Last Known Position. Cells in the 15°–32° runout catchment basin receive higher baseline priors, while sheer cliffs (>45°) are suppressed. All unscanned cells remain at baseline Priority 4 without artificial false alarms."*
 
 ---
 
 ### Scenario B: Multi-Modal Evidence Update & Target Lock (1:45 – 3:15)
-* **Action:** Observe UAV-Alpha and UAV-Bravo sweep across Target 1 (`cell_45_35`).
+* **Action:** Wait for the first P1 lock; read its cell ID, MGRS string, depth, and azimuth from the triage card on screen.
 * **Explanation:**
-  > *"As UAV-Alpha passes over `cell_45_35`, its 457 kHz RF sniffer detects flux induction ($c=0.92$), pushing cell probability into Priority 2 ($P \approx 65\%$). Seconds later, UAV-Bravo traverses the same sector with its Ultra-Wideband GPR, confirming a dielectric anomaly ($\varepsilon_r = 52.5$) and locking onto a $0.28\text{ Hz}$ chest-wall respiration waveform.*  
-  > *Because Group A (Electronic) and Group B (Subsurface) provide orthogonal cross-confirmation, the Recursive Bayesian Log-Odds exceed $\tau_{\text{P1}} = 0.85$. The engine immediately elevates the cell to **Priority 1 (Target Lock)**.*  
-  > *Instantly, a **Tactical Directive** is generated:*
-  > 1. *10-Digit MGRS Coordinate (true WGS84 conversion): `43S GT 36220 85591`.*
-  > 2. *Estimated Burial Depth: $Z = 1.30\text{ m}$.*
-  > 3. *Safe Contour Approach Azimuth (computed live from the DEM gradient; e.g. $95.2^\circ$ at this cell, perpendicular to the fall-line to protect rescuers).*
-  > 4. *A 16-byte packed binary LoRaWAN C-struct is serialized for tactical mountain radio broadcast."*
-* **Action:** Click **"INSPECT MICRO-DOPPLER & GPR DSP"** on the triage card to open the Target Analytics Modal.
-* **Highlight:** Point out the live animated $0.28\text{ Hz}$ respiration sine wave and synthetic GPR B-scan hyperbola with biological tissue permittivity ($\varepsilon_r \approx 52.5$).
+  > *"As UAV-Alpha passes over this sector, its 457 kHz RF sniffer detects flux induction, pushing cell probability into Priority 2. Seconds later, UAV-Bravo traverses the same sector with its Ultra-Wideband GPR, confirming a dielectric anomaly (human tissue εr ≈ 52.5 vs snow ≈ 3.2) and locking onto a ~0.28 Hz chest-wall respiration waveform.*
+  > *Because Group A (Electronic) and Group B (Subsurface) provide orthogonal cross-confirmation, the Recursive Bayesian Log-Odds exceed the P1 threshold of 0.85. The engine immediately elevates the cell to Priority 1 (Target Lock) and generates a Tactical Directive:"*
+  > 1. *True 10-Digit MGRS Coordinate (WGS84 → UTM → MGRS conversion — read the exact value from the card).*
+  > 2. *Estimated Burial Depth Z.*
+  > 3. *Safe Contour Approach Azimuth computed live from the DEM gradient, perpendicular to the fall-line.*
+  > 4. *A 16-byte packed binary LoRaWAN C-struct serialized for tactical mountain radio broadcast.*
+* **Action:** Click **"INSPECT MICRO-DOPPLER & GPR DSP"** on the triage card.
+* **Highlight:** The live animated respiration sine wave and synthetic GPR B-scan hyperbola.
 
 ---
 
 ### Scenario C: Sensor Failure & Graceful Degradation (3:15 – 4:30)
-* **Action:** In the right-hand **Hardware Modality Fault Injection** console, click **"457 kHz Transceiver"** to toggle it to `FAULT ACTIVE`.
+* **Action:** In the right-hand Hardware Modality Fault Injection console, click **"457 kHz Transceiver"** to toggle it to FAULT ACTIVE.
 * **Explanation:**
-  > *"Now we simulate a mission-critical failure: an unequipped civilian victim or a hardware failure on the 457 kHz RF receiver. Notice that Target 2 (`cell_70_60`) has no 457 kHz beacon signal.*  
-  > *Instead of failing, the polymorphic adapter handles missing RF with zero penalty ($\text{LLR} = 0$). As UAV-Bravo executes consecutive GPR and micro-seismic passes, the leaky intra-group accumulator collects subsurface evidence. The multi-pass temporal persistence filter awards a $+0.75$ bonus for repeated detection, promoting the non-cooperative victim to Priority 1 strictly through radar and acoustic signatures."*
+  > *"Now we simulate a mission-critical failure: an unequipped civilian victim, or hardware loss on the RF receiver. Instead of failing, missing RF evidence contributes zero penalty — never silent defaults. As UAV-Bravo executes consecutive GPR and micro-seismic passes, the leaky intra-group accumulator collects subsurface evidence, and the multi-pass temporal persistence filter awards a persistence bonus, promoting any non-cooperative victim strictly through radar and acoustic signatures."*
+* **Action:** Toggle the transceiver back to NORMAL after the demonstration.
+
+### Scenario D: Telemetry Link Honesty (4:30 – 4:50)
+* **Action:** Pause the backend process (Ctrl+C) with the HUD still open; let the link pill run past 3 seconds.
+* **Explanation:**
+  > *"A frozen picture is more dangerous than no picture. The moment frames stop arriving, the HUD declares STALE with an age counter, then LINK OFFLINE past ten seconds — operators are never shown a dead stream as if it were live."*
+* **Action:** Restart the server; the pill returns to LIVE via auto-reconnect.
 
 ---
 
-### Wrap-Up & Value Summary (4:30 – 5:00)
+### Wrap-Up & Value Summary (4:50 – 5:00)
 * **Conclusion:**
-  > *"AVALANCHE-VLF cuts victim localization time from over 45 minutes to under 12 minutes, directly defeating the 15-minute Asphyxiation Cliff with 100% auditable mathematical determinism."*
+  > *"AVALANCHE-VLF cuts victim localization time from over 45 minutes to under 12, directly defeating the 15-minute asphyxiation cliff with fully auditable mathematical determinism."*
 
 ---
 

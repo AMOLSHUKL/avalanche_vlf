@@ -33,7 +33,7 @@
 (venv) ~/.../SIH_2026/avalanche_vlf $ pytest tests/ -q
 
 ```text
-357 passed
+367 passed
 
 Coverage by file:
   tests/test_geo.py                MGRS anchors incl. libmgrs known-answer

@@ -90,7 +90,7 @@
     <div class="stat-row">
         <div class="stat"><div class="num c">7</div><div class="lbl">Sensor modalities fused</div></div>
         <div class="stat"><div class="num a">16 B</div><div class="lbl">LoRa target vector</div></div>
-        <div class="stat"><div class="num g">34</div><div class="lbl">Verification tests passing</div></div>
+        <div class="stat"><div class="num g">367</div><div class="lbl">Verification tests passing</div></div>
     </div>
 </section>
 
@@ -103,6 +103,7 @@
             <li>Buried victims survive on an <strong>asphyxiation cliff</strong>: ~90% survival if extracted within 15 minutes, below 30% past 35 minutes.</li>
             <li>Sectors like Siachen, Ladakh and North Sikkim need <strong>30–60+ minutes</strong> just to mobilize a probe line.</li>
             <li><strong>Passive victims carry nothing</strong> — no 457 kHz transceiver, no RECCO reflector, often no phone. Existing systems cannot see them.</li>
+            <li>India already forecasts and detects releases: DGRE's Sikkim radar flags an avalanche <strong>within 3 seconds</strong>, and its drone-based buried-object detector was airlifted to the 2025 Mana rescue. What remains unsolved is <strong>rapid victim localization after the release</strong>.</li>
         </ul>
         <div>
             <div class="stat-row" style="margin-top:0;">
@@ -126,6 +127,7 @@
         <tr><td>Handheld beacon search</td><td>Needs trained searchers on foot across dangerous debris; hopeless for passive victims</td></tr>
         <tr><td>Drone + 457 kHz receiver</td><td>Motor EMI collapses sensitivity to ~6 m radius vs 50 m handheld (documented 2017–2025)</td></tr>
         <tr><td>Thermal / RGB only</td><td>Buried victims emit nothing visible through 1–3 m of snowpack</td></tr>
+        <tr><td>Single-modality ML concepts</td><td>One sensor, no cross-confirmation, no wire format to rescuers, unverified output</td></tr>
         <tr><td>Black-box ML triage</td><td>Unexplainable decisions are indefensible when lives and missions are audited</td></tr>
     </table>
     <p style="margin-top:3.5vh;">AVALANCHE-VLF is engineered against each of these — <strong>not around them.</strong></p>
@@ -223,8 +225,8 @@
     <div class="kicker">Verified correctness</div>
     <h2>"Foolproof" is a test suite, not a claim</h2>
     <div class="stat-row" style="margin-top:0;">
-        <div class="stat"><div class="num g">34</div><div class="lbl">Tests passing</div></div>
-        <div class="stat"><div class="num c">&lt;1 mm</div><div class="lbl">Geo round-trip error over 1007 global samples</div></div>
+        <div class="stat"><div class="num g">367</div><div class="lbl">Tests passing</div></div>
+        <div class="stat"><div class="num c">&lt;1 mm</div><div class="lbl">Geo round-trip error, ~1,060-point global sweep</div></div>
         <div class="stat"><div class="num a">±0 m</div><div class="lbl">Azimuth-to-gradient dot product tolerance</div></div>
     </div>
     <ul style="margin-top:3.5vh;">
@@ -272,7 +274,7 @@
     <h2>The gate is hardware, and we sequenced it honestly</h2>
     <table>
         <tr><th>Phase</th><th>Milestone</th><th>Exit criterion</th></tr>
-        <tr><td>Now</td><td>Verified decision core + wire formats + HUD (this repo)</td><td>34/34 tests, E2E directive issuance</td></tr>
+        <tr><td>Now</td><td>Verified decision core + wire formats + HUD (this repo)</td><td>367/367 tests, E2E directive issuance</td></tr>
         <tr><td>6.1</td><td>Single-modality bench rig: 457 kHz → adapter → fusion on a sled</td><td>Adapter contract proven on real bytes</td></tr>
         <tr><td>6.2</td><td>EKF point refinement after grid MAP lock (literature-standard two-stage)</td><td>Sub-meter aim point vs 5 m cell</td></tr>
         <tr><td>6.3</td><td>GeoTIFF DEM ingestion; field calibration harness for priors</td><td>Priors fitted from real snow-pit truth</td></tr>
@@ -305,7 +307,7 @@
         <div class="stat"><div class="num a">DGRE-ready</div><div class="lbl">Bands, doctrine, data partners</div></div>
     </div>
     <p style="margin-top:4vh; color:var(--muted);" class="mono">
-        github.com/&lt;your-org&gt;/avalanche-vlf · Apache-2.0 · pytest: 34 passed
+        github.com/AMOLSHUKL/avalanche_vlf · Apache-2.0 · pytest: 367 passed
     </p>
 </section>
 
