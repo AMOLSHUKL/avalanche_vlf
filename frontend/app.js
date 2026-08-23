@@ -38,7 +38,6 @@ const state = {
     }
 };
 
-const LINK_STALE_AFTER_MS = 3000;
 const linkPill = document.getElementById("linkStatus");
 const linkText = document.getElementById("linkStatusText");
 
@@ -145,12 +144,14 @@ function initWebSocket() {
 initWebSocket();
 
 // Link-health watchdog: frames arriving at 10 Hz must never silently stop.
+// Classification lives in frontend/link_state.js (shared with the test suite).
 setInterval(() => {
     if (state.linkState === "offline") return;
-    const silentForMs = Date.now() - state.lastFrameAtMs;
-    if (state.lastFrameAtMs === 0 || silentForMs > 10000) {
+    const verdict = LinkHealth.classify(state.lastFrameAtMs, Date.now());
+    if (verdict === "offline") {
         setLinkState("offline", "LINK OFFLINE");
-    } else if (silentForMs > LINK_STALE_AFTER_MS) {
+    } else if (verdict === "stale") {
+        const silentForMs = Date.now() - state.lastFrameAtMs;
         setLinkState("stale", `STALE +${Math.round(silentForMs / 100) / 10}s`);
     }
 }, 500);
