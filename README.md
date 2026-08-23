@@ -1,6 +1,8 @@
 # AVALANCHE-VLF
 
-### Autonomous Multi-Modal Sensor Fusion & Decision-Support Engine for Avalanche SAR
+### Victim Localization & Fusion Engine
+
+Autonomous Multi-Modal Sensor Fusion & Decision-Support Engine for Avalanche SAR
 
 **Smart India Hackathon 2026 | Ministry of Defence (MoD) / DRDO / DGRE | Problem Statement `SIH260104` — Identification of victims buried under avalanches (Theme: Disaster Management)**
 
