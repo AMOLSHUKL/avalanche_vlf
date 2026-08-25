@@ -35,10 +35,19 @@ avalanche_vlf/
 │       ├── lora_packet.py              # 16-byte packed binary C-struct LoRaWAN encoder/decoder with CRC-16
 │       └── simulator.py                # Dual UAV flight generator, 5-phase SAR state machine, fault injector
 ├── frontend/
-│   ├── index.html                      # Tactical Operations HUD, 15-min timer, 2D Canvas, DSP modal UI
-│   └── app.js                          # Canvas Y-axis inversion, WebSocket consumer, server-anchored mission clock
+│   ├── index.html                      # HUD shell: triage column, DSP drawer, GIS toolbar, mobile sheet
+│   ├── css/app.css                     # Theme tokens (light/dark), responsive layout
+│   ├── js/app.js                       # Orchestrator: WS ingest, triage reconciliation, targeting, faults
+│   ├── js/dem.js                       # Analytic DEM — mirrors engine/terrain.py exactly (parity-gated)
+│   ├── js/fusion.js                    # Shared posterior heat layer (2D canvas + 3D texture)
+│   ├── js/map2d.js                     # Topo map: hillshade, contours, hazard tint, reticle
+│   ├── js/relief3d.js                  # RELIEF 3D: alpine terrain, snow shading, assets, avalanche
+│   ├── link_state.js                   # Link watchdog (LIVE/STALE/OFFLINE classification)
+│   └── vendor/                         # three.min.js + OrbitControls.js (vendored, no CDN)
 ├── scripts/
-│   └── calibrate_parameters.py         # Post-mission Maximum A Posteriori (MAP) prior optimization pipeline
+│   ├── calibrate_parameters.py         # Post-mission Maximum A Posteriori (MAP) prior optimization pipeline
+│   ├── capture_ui.js                   # Headless 2D UI pixel captures (proot chromium)
+│   └── smoke_frontend.js               # DOM/WebGL-stub runtime smoke test
 └── tests/
     ├── test_fusion.py                  # Fusion math, temporal filter, azimuth frame, LoRa roundtrip, concurrency
     ├── test_geo.py                     # MGRS anchors, central-meridian exactness, global round-trip closure

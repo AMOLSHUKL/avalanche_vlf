@@ -26,7 +26,7 @@ their substance is preserved here as project-level mechanisms instead.
       must show an explicit STALE/OFFLINE banner when frames stop arriving beyond
       a cutoff (e.g. > 3 s), never present a frozen clock as current.
       (Closed 2026-08-23: rule extracted to frontend/link_state.js, consumed by
-      the app.js watchdog; tests/test_hud_staleness.py executes the shipped file
+      the js/app.js orchestrator watchdog; tests/test_hud_staleness.py executes the shipped file
       under Node incl. a stalled-stream transition sweep.)
 - [x] Test simulating a stalled stream asserting the indicator fires.
       (Closed 2026-08-23: test_stalled_stream_transitions_live_stale_offline.)

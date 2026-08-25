@@ -22,8 +22,9 @@
 | **MGRS Military Geotagging** | `backend/engine/geo.py` | True WGS84->UTM->MGRS conversion (USGS PP 1395 / NGA TM 8358.1), e.g. `43S GT 36122 85514`; exhaustive 60-zone lettering sweep + libmgrs cross-checked known-answer vectors (Norway/Svalbard zone overrides out of operational envelope) | **COMPLETE & VERIFIED** (post-audit #1 fix, 2026-08-22) |
 | **NLOS LoRaWAN 16-Byte C-Struct** | `backend/telemetry/lora_packet.py` | Exact 16-byte packed binary struct (`!BBBBHBHBHHH`) with CRC-16/CCITT | **COMPLETE & VERIFIED** |
 | **5-Phase Mission Lifecycle State Machine**| `backend/telemetry/simulator.py`| Preflight $\rightarrow$ Surface $\rightarrow$ Deep Radar $\rightarrow$ Marker $\rightarrow$ Guidance | **COMPLETE & VERIFIED** |
-| **7-Modality Fault Injection** | `backend/main.py`, `frontend/app.js`| Real-time sensor failure disabling via REST API and HUD buttons | **COMPLETE & VERIFIED** |
-| **Tactical Command Operations HUD** | `frontend/index.html`, `app.js` | Zero-dependency ES6+ Canvas UI with Cartesian Y-axis inversion | **COMPLETE & VERIFIED** |
+| **7-Modality Fault Injection** | `backend/main.py`, `frontend/js/app.js`| Real-time sensor failure disabling via REST API and HUD buttons; incident-card fusion count tracks degraded state live | **COMPLETE & VERIFIED** |
+| **Tactical Command Operations HUD** | `frontend/index.html`, `frontend/js/` | Modular ES6+ UI (`app`, `dem`, `fusion`, `map2d`, `relief3d`) with vendored three.js; Cartesian Y-axis inversion | **COMPLETE & VERIFIED** |
+| **RELIEF 3D Alpine Tactical View** | `frontend/js/relief3d.js`, `frontend/js/dem.js` | DEM-mirrored terrain (exact frontend/backend parity, 0.00 m over 1156 cells), snow/rock shading, procedural assets (pines/rocks/base camp/quadcopter UAVs), terrain-following UAV flight, scripted avalanche release with volumetric flow + deposit; `?debug=3d` scene HUD | **COMPLETE & VERIFIED** (device pixel review + smoke + parity checks) |
 | **Offline MAP Prior Calibration CLI** | `scripts/calibrate_parameters.py`| Laplace-smoothed Maximum A Posteriori likelihood optimizer | **COMPLETE & VERIFIED** |
 
 ---
@@ -90,9 +91,9 @@ Phase 7      Field Altitude Benchmarking       - Deployment in Siachen / Ladakh 
 ===================================================================================================
 ---
 
-## 4. Local Working State — UNPUSHED (2026-08-24)
+## 4. Local Working State & Session Log (updated 2026-08-25)
 
-Everything below exists only in the local working tree; `origin/main` predates it. Read this section (plus [`.ai/TERMUX_RUNBOOK.md`](TERMUX_RUNBOOK.md) and [`.ui_review/ISSUES.md`](../.ui_review/ISSUES.md)) before continuing any session.
+**Everything below is PUSHED** — `origin/main` at `6470d3c` (2026-08-25). The device-level environment runbook lives OUTSIDE this repo at `~/development/config/TERMUX_RUNBOOK.md` (device outlives any project); read it before any session on this tablet. It carries the full error/decision log for the Termux + Ubuntu-proot environment: phantom-process kills, the wheel boundary, the SwiftShader no-op, the backend's Ubuntu-side unreachability, git/SSH inside proot, apt-lock hangs, the browser stale-JS incident, and the storage-audit decisions.
 
 ### Frontend rebuild (complete, verified)
 
@@ -115,9 +116,20 @@ Everything below exists only in the local working tree; `origin/main` predates i
 - Known tradeoff: proot costs ~2× on syscall-heavy operations (measured: git status 21 ms native vs ~45 ms in-session) until the device is rooted and the same Ubuntu rootfs moves to chroot.
 - Rollback artifact: the old Hope2333 bashrc wrapper is preserved at `~/.config/opencode/termux-launcher-rollback.sh` (its binary/glibc dependencies are NOT reinstallable without re-adding the glibc layer; the official Ubuntu build is the supported path).
 
-### Planned for the next git push
+### Pushed 2026-08-25 (`6470d3c`) — frontend rebuild + 3D + avalanche scenario
 
-1. Frontend modular rebuild + all visual fixes above (working tree: modified `index.html`, deleted `app.js`, new `css/ js/ vendor/ scripts/`).
-2. `requirements.txt`: direct `websockets` pin removed (transitive via `uvicorn[standard]`, verified on 17.x), numpy bounded `<3`.
-3. Deferred doc sync (blocked until frontend approved): README module map + HUD description + verification commands; `.ai/PROJECT_STATE.md` rows 25-26; `.ai/ARCHITECTURE.md` frontend tree; `.ai/CONVENTIONS.md` zero-dependency rule (now "vendored, no CDN"); `HANDOFF.md` HUD box; `.ai/BACKLOG.md` watchdog wording.
-4. `.ui_review/` and `.ai/TERMUX_RUNBOOK.md` stay local/untracked or are committed deliberately — decide at push time.
+1. Frontend modular rebuild (see above) + RELIEF 3D rebuild: enriched DEM (4117 m peak, east ridge, carved gully — mirrored EXACTLY in backend `TerrainEngine` and frontend `dem.js`; the parity check is a standing gate), snow/rock shader, procedural assets, terrain-following UAVs, scripted avalanche (incident+75 s, volumetric crown flow, deposit).
+2. Ground-truth victims moved onto the runout centerline — cells (55,43) equipped, (61,30) deep passive, (58,36) shallow; slopes verified 23.5-26 deg (inside the 15-32 burial band), 1 m off the gully centerline; UAV Bravo's sweep band extended to rows 30-74 so GPR/RECCO victims are actually overflown.
+3. `requirements.txt`: direct `websockets` pin removed (transitive via `uvicorn[standard]`, verified on 17.x), numpy bounded `<3`.
+4. Static assets served with `Cache-Control: no-cache` after the stale-JS incident; `.ui_review/` gitignored.
+5. Doc sync (this commit): README module map + verification, ARCHITECTURE frontend tree, CONVENTIONS dependency rule (vendored, no CDN), BACKLOG watchdog wording, runbook relocated to `~/development/config/`.
+
+### Session error log (2026-08-24/25) — code lessons behind the shipped fixes
+
+- **DEM parity**: frontend sampled cell corners, backend cell centers — sub-1 m on the old ramp, **6.16 m** across the peak/gully Gaussians. Fixed to exact parity; any future DEM edit must rerun the parity check.
+- **Avalanche auto-trigger unreachable**: the elapsed-time trigger check sat after the idle early-return in `updateAvalanche`. Ordering rule: trigger checks precede state early-returns.
+- **Scroll anchoring against a non-scrolling element**: anchoring math on `#queueDesk` was a no-op because `.rc-scroll`/`.sheet-body` owns the scroll. Anchor against the real scroller (getBoundingClientRect, not offsetTop).
+- **CSS animation replay on re-insertion**: `.fresh` class persisted on reconciled cards, so every `replaceChildren` reorder replayed the entry animation — the "continuous flashing". One-shot classes must be stripped on `animationend`.
+- **Peek bar null crash on mission restart**: empty-state `innerHTML` swap destroyed patched spans but left a `dataset.built` guard — cleared the guard with the swap.
+- **Stale-asset mixed state**: server restart + browser cache = new backend, old frontend (the "nothing changed" report). Root-fixed with `Cache-Control: no-cache`.
+- **Headless-GL dead end**: SwiftShader silently no-ops under proot (contexts OK, shaders link, zero pixels — headless AND headed/Xvfb/Mesa). Do not retry without a new chromium/ANGLE path.

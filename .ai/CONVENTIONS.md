@@ -24,7 +24,7 @@
 
 ### 1.2 JavaScript & Frontend Standards
 * **Target Environment:** Vanilla ECMAScript 6+ running natively in modern browsers.
-* **Zero Dependency Rule:** No external runtime dependencies (no React, Vue, jQuery, Tailwind, or CDN scripts). All styling, animations, and state handling must remain self-contained within `frontend/index.html` and `frontend/app.js`.
+* **Vendored Dependency Rule:** No external runtime dependencies (no React, Vue, jQuery, Tailwind) and **no CDN scripts** — the HUD must work fully offline. three.js + OrbitControls are vendored under `frontend/vendor/`; project code is split by concern under `frontend/js/` (`app` orchestrator, `dem` terrain mirror, `fusion` heat layer, `map2d`, `relief3d`). `frontend/js/dem.js` must stay in EXACT parity with `backend/engine/terrain.py` — rerun the parity check after any DEM edit.
 * **Coordinate System Transformation:**
   * Standard Web Canvas coordinates: Origin $(0, 0)$ is at Top-Left, with $+Y$ pointing Down.
   * SAR Tactical Grid coordinates: Origin $(0, 0)$ is at Bottom-Left (South-West), with $+Y$ pointing North.

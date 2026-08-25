@@ -51,9 +51,10 @@ FUSION CORE (FastAPI, this repo)
   DEM priors + rescuer hazard + survival utility ranking
         |                                   |
         v                                   v
-16-byte LoRa C-struct              WebSocket HUD (10 Hz)
-(!BBBBHBHBHHH, CRC-16)             canvas map, triage queue,
-                                   DSP inspector, fault injection
+16-byte LoRa C-struct              Tactical HUD (10 Hz)
+(!BBBBHBHBHHH, CRC-16)             2D topo map + RELIEF 3D alpine view,
+                                   triage queue, DSP inspector,
+                                   fault injection, avalanche scenario
 ```
 
 Module map:
@@ -72,8 +73,21 @@ backend/
 └── telemetry/
     ├── lora_packet.py      # 16-byte binary wire format with CRC-16
     └── simulator.py        # Dual-UAV flight generator, 5-phase state machine
-frontend/                   # Zero-dependency ES6 tactical HUD
-scripts/calibrate_parameters.py   # Post-mission MAP prior calibration
+frontend/                   # Modular ES6 tactical HUD (vendored three.js, no CDN)
+├── index.html              # HUD shell: triage column, DSP drawer, GIS toolbar
+├── css/app.css             # Theme tokens (light/dark), responsive layout
+└── js/
+    ├── app.js              # Orchestrator: WebSocket ingest, triage reconciliation,
+    │                       #   fault injection, targeting, DSP drawer
+    ├── dem.js              # Analytic DEM mirror of backend TerrainEngine (exact parity)
+    ├── fusion.js           # Shared posterior heat layer (2D canvas + 3D texture)
+    ├── map2d.js            # Topo map: hillshade, contours, hazard tint
+    └── relief3d.js         # RELIEF 3D: alpine terrain, snow/rock shading, procedural
+                            #   assets, terrain-following UAVs, avalanche scenario
+scripts/
+├── calibrate_parameters.py # Post-mission MAP prior calibration
+├── capture_ui.js           # Headless 2D UI pixel captures (proot chromium)
+└── smoke_frontend.js       # DOM/WebGL-stub runtime smoke test (no browser needed)
 tests/                      # 367-test verification suite
 ```
 
@@ -95,6 +109,15 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 # 4. Open the command dashboard
 xdg-open http://localhost:8000/frontend/index.html
+#    append ?debug=3d for the live 3D scene report (draw calls, triangles,
+#    avalanche state, UAV height above terrain)
+```
+
+Frontend verification (no browser needed for the smoke run):
+
+```bash
+node scripts/smoke_frontend.js          # boots the HUD under DOM/GL stubs
+node scripts/capture_ui.js              # 2D pixel captures -> .ui_review/ (needs chromium)
 ```
 
 The suite covers: Bayesian alignment to P1 lock, non-cooperative victim fallback, negative-evidence symmetry, leaky anti-windup retraction, hazard monotonicity, schema bounds, dynamic survival binding, concurrency lock safety under parallel workers, MGRS correctness against the published null-island anchor `31N AA 66021 00000` plus global sub-millimeter round-trip closure, contour-perpendicular approach azimuths, LoRa round-trip packaging, and API boundary validation.
