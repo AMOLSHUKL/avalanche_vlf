@@ -26,7 +26,7 @@ AVALANCHE-VLF is an edge-native, time-aware sensor fusion and decision-support e
 4. Ranks search sectors by coupling spatial occupancy with a tri-phase biophysical survival model S(t, ρ) and a monotonic rescuer slope hazard function.
 5. Emits tactical directives with true 10-digit MGRS grid references, burial depth Z, and contour-parallel safe approach azimuths, packaged as 16-byte binary LoRa frames with CRC-16.
 
-Every number in the triage path comes from closed-form equations documented in [`.ai/ARCHITECTURE.md`](.ai/ARCHITECTURE.md). No stochastic ML sits between a sensor reading and a rescue directive; every log-odds update is auditable from the JSONL mission log.
+Every number in the triage path comes from closed-form equations documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). No stochastic ML sits between a sensor reading and a rescue directive; every log-odds update is auditable from the JSONL mission log.
 
 ## 2. How the fusion core thinks
 
@@ -151,7 +151,7 @@ Invalid updates are rejected with HTTP 422 before touching engine state; unknown
 
 Read this before deploying anything real.
 
-* **All sensor data is simulated.** The adapters, payloads, and physics models are production-shaped, but no physical radar, radio, or camera is attached yet. Hardware bridges (SPI/UART LoRa, SEGY radar ingestion, MAVLink) are scoped in [`.ai/PROJECT_STATE.md`](.ai/PROJECT_STATE.md).
+* **All sensor data is simulated.** The adapters, payloads, and physics models are production-shaped, but no physical radar, radio, or camera is attached yet. Hardware bridges (SPI/UART LoRa, SEGY radar ingestion, MAVLink) are scoped in [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md).
 * **The DEM is synthetic.** `TerrainEngine` generates an analytical Himalayan gully profile; GeoTIFF elevation ingestion is planned. Slope priors are demo-grade until then.
 * **Survival parameters are literature-informed defaults**, not clinical constants. The tri-phase curve is configurable in YAML and intended for calibration against DGRE field data via `scripts/calibrate_parameters.py`.
 * **The REST API has no authentication.** It assumes an isolated, air-gapped operational network. Add auth before exposing it anywhere routable.

@@ -55,7 +55,7 @@ Coverage by file:
 
 ### Audit remediation (2026-08-22)
 
-All findings from `.ai/AVALANCHE-VLF_AUDIT.md` are resolved except
+All findings from `docs/AVALANCHE-VLF_AUDIT.md` are resolved except
 OPTIMIZATION-12 (C1 kink in `calculate_rescuer_hazard`, cosmetic and unused
 by gradient-based calibration). Highlights:
 - [CRITICAL-1] MGRS lettering rewritten to per-zone-set 8-letter blocks

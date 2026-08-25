@@ -1,5 +1,5 @@
 # AVALANCHE-VLF — Architectural & Algorithmic Audit
-**Scope:** `backend/` (engine, adapters, schemas, telemetry, config, main), `tests/`, cross-checked against `.ai/PROJECT_STATE.md` and `.ai/BACKLOG.md`.
+**Scope:** `backend/` (engine, adapters, schemas, telemetry, config, main), `tests/`, cross-checked against `docs/PROJECT_STATE.md` and `docs/BACKLOG.md`.
 **Method:** Full extraction of all 48 files from `codebase.xml` (Repomix dump) to disk; line-by-line static review; empirical verification of every geodesy/numeric claim by executing the actual extracted modules (not hand-derivation) against regression anchors and exhaustive sweeps. Diffs below are proposed, not applied.
 
 > **Amendment (2026-08-23):** the fix originally proposed for [CRITICAL-1] was itself wrong (it preserved a truncated column-letter alphabet instead of correcting it). Verified against GeographicLib and movable-type.co.uk reference implementations and corrected in place below — see that section for the specific error and the corrected diff. All other findings are unaffected.
@@ -23,11 +23,11 @@
 | 7 | MEDIUM | `backend/telemetry/simulator.py` | Grid dimensions hardcoded, not sourced from `ConfigLoader` — silent partial-coverage risk on grid resize |
 | 8 | MEDIUM | `backend/telemetry/lora_packet.py` | `from_directive` silently defaults to cell `(0,0)` on a malformed zone ID instead of failing loudly (inconsistent with the codebase's own stated philosophy) |
 | 9 | MEDIUM | `backend/main.py` | WebSocket handler's generic `except Exception` swallows errors with no logging |
-| 10 | MEDIUM | `backend/config/loader.py` | `.config` property returns the live dict by reference despite a "read-only" docstring (already tracked in `.ai/BACKLOG.md`) |
+| 10 | MEDIUM | `backend/config/loader.py` | `.config` property returns the live dict by reference despite a "read-only" docstring (already tracked in `docs/BACKLOG.md`) |
 | 11 | MEDIUM | `backend/engine/adapters/rf.py` | Detection-quality curve uses an inverse-square-style heuristic, not the near-field dipole (~r⁻³) physics the problem statement invokes |
 | 12 | OPTIMIZATION | `backend/engine/terrain.py` | `calculate_rescuer_hazard` is C0 but not C1 at the 45° seam — cosmetic only |
 | 13 | OPTIMIZATION | `backend/engine/fusion.py` | Cross-group conditional-independence assumption is implicit/uncalibrated |
-| 14 | OPTIMIZATION | `.ai/PROJECT_STATE.md` | MGRS subsystem marked "COMPLETE & VERIFIED" — contradicted by #1; status table needs correction |
+| 14 | OPTIMIZATION | `docs/PROJECT_STATE.md` | MGRS subsystem marked "COMPLETE & VERIFIED" — contradicted by #1; status table needs correction |
 
 ---
 
@@ -69,7 +69,7 @@ So this bug has two manifestations, not one: an outright crash for `col_index �
 
 **Does today's demo config trigger it?** No — verified by sweeping all 10,000 cells of the actual configured 500m×500m grid at `origin_lat=34.1839, origin_lon=77.5621`: **0 crashes**. This origin sits in UTM zone 43 (zone_set=0, the one working start-index), and the grid's northing range never leaves `row_index=17`. This is coincidence, not correctness — it depends on both the specific zone and a specific 100km northing band never being crossed. Any future origin change (a different Himalayan sector, a judge asking "what if this were Uttarakhand"), or simply widening the grid past a 100km northing boundary, can hit it.
 
-**Test-coverage root cause:** `tests/test_geo.py` has 8 tests. The one designed for global sweep (`test_round_trip_closure_global_grid`) exercises `geodetic_to_utm`/`utm_to_geodetic` only — it never calls `geodetic_to_mgrs`, so it never touches the buggy function at all. Every other test that *does* call `geodetic_to_mgrs` uses the one demo origin, which structurally cannot reach zone_set 1/2 or the row-letter boundary. `.ai/BACKLOG.md` already senses this ("parametrized known-answer vectors… beyond null-island + round-trip closure") but has it filed as a hygiene nice-to-have, not a demonstrated defect.
+**Test-coverage root cause:** `tests/test_geo.py` has 8 tests. The one designed for global sweep (`test_round_trip_closure_global_grid`) exercises `geodetic_to_utm`/`utm_to_geodetic` only — it never calls `geodetic_to_mgrs`, so it never touches the buggy function at all. Every other test that *does* call `geodetic_to_mgrs` uses the one demo origin, which structurally cannot reach zone_set 1/2 or the row-letter boundary. `docs/BACKLOG.md` already senses this ("parametrized known-answer vectors… beyond null-island + round-trip closure") but has it filed as a hygiene nice-to-have, not a demonstrated defect.
 
 ### Fix — CORRECTED 2026-08-23 (see amendment note below; do not use the version originally published here)
 
@@ -397,7 +397,7 @@ No `logger.exception(...)`, unlike the structurally identical handler in `teleme
 ```
 
 **10 — `ConfigLoader.config` returns a live reference, not a copy.**
-Docstring says "treat as read-only"; nothing enforces it. Already tracked in `.ai/BACKLOG.md` ("Copy-on-read check for `ConfigLoader.config` consumers") — this audit reinforces it as a real, not hypothetical, risk given `fusion.py` holds `self.config_loader.config["grid"]` references throughout. Minimal fix: `return copy.deepcopy(self._config_data)` in the property, or add typed snapshot getters (matches the pattern `get_thresholds()`/`get_group_caps()` already use) for every remaining raw `.config[...]` access site.
+Docstring says "treat as read-only"; nothing enforces it. Already tracked in `docs/BACKLOG.md` ("Copy-on-read check for `ConfigLoader.config` consumers") — this audit reinforces it as a real, not hypothetical, risk given `fusion.py` holds `self.config_loader.config["grid"]` references throughout. Minimal fix: `return copy.deepcopy(self._config_data)` in the property, or add typed snapshot getters (matches the pattern `get_thresholds()`/`get_group_caps()` already use) for every remaining raw `.config[...]` access site.
 
 **11 — RF adapter quality curve doesn't reflect near-field dipole physics.**
 `adapters/rf.py:44`: `q_dist = 1.0 / (1.0 + (dist / (max_range * 0.5)) ** 2)` — a generic inverse-square-style saturating curve. A 457kHz avalanche transceiver operates in the magnetic near-field, where real flux-line signal strength falls off closer to `r⁻³`, not `r⁻²`. This doesn't produce a wrong *answer* here — it's a confidence *weight*, not a literal field-strength estimate, and it's bounded/monotonic either way — but the brief specifically asks to audit "VLF/RF dipole equations," and there are none in this codebase; what exists is a plausible-looking but physics-unlabeled heuristic. If the SIH submission's written materials claim dipole-equation fidelity, either cite this as a deliberate simplification or swap the exponent: `(dist / (max_range * 0.5)) ** 3`.
@@ -410,7 +410,7 @@ Docstring says "treat as read-only"; nothing enforces it. Already tracked in `.a
 
 **13 — Cross-group conditional-independence assumption is implicit.** `fusion.py`'s `aggregate_group_llr_sum = Σ w_g · LLR_g` is textbook naive-Bayes log-odds fusion, valid under the assumption that Group A/B/C evidence is conditionally independent given victim presence. That's a reasonable modeling choice (electronic RF, subsurface radar/seismic, and surface thermal/optical are physically close to independent channels) but it's uncalibrated and undocumented as an assumption anywhere in the code. Worth one docstring line in `fusion.py` for anyone extending the model later.
 
-**14 — `.ai/PROJECT_STATE.md` overstates verification status.** The status table marks "MGRS Military Geotagging… COMPLETE & VERIFIED" and "34 passed" as evidence, citing the exact `43S GT 36343 85694` example this audit also used — but for the one code path the demo's origin happens to exercise. Recommend downgrading that row to "VERIFIED FOR CURRENT DEMO ORIGIN ONLY — see AVALANCHE-VLF_AUDIT.md #1" until [CRITICAL-1]'s fix and its exhaustive regression test land.
+**14 — `docs/PROJECT_STATE.md` overstates verification status.** The status table marks "MGRS Military Geotagging… COMPLETE & VERIFIED" and "34 passed" as evidence, citing the exact `43S GT 36343 85694` example this audit also used — but for the one code path the demo's origin happens to exercise. Recommend downgrading that row to "VERIFIED FOR CURRENT DEMO ORIGIN ONLY — see AVALANCHE-VLF_AUDIT.md #1" until [CRITICAL-1]'s fix and its exhaustive regression test land.
 
 ---
 
@@ -471,4 +471,4 @@ Execute in this order — each step is independently buildable/testable; later s
 13. **`backend/telemetry/simulator.py`** + **`backend/main.py`** — Thread `width_m`/`height_m`/`cell_size_m` from config into `TelemetrySimulator.__init__` instead of hardcoded `500.0`/`5.0` ([MEDIUM-7]).
 14. **`tests/test_adapters.py`** (new file) — Unit-test each of the 5 `evaluate_quality()` curves: bounds `[0,1]` (or documented floor), monotonicity in their primary variable, zero/extreme-input behavior.
 15. **`tests/test_lora_packet.py`** (new file, or extend `test_fusion.py`) — Add the corrupt-CRC and truncated-size resilience test from the coverage section.
-16. **`.ai/PROJECT_STATE.md`** — Correct the MGRS status-table row per [OPTIMIZATION-14] once steps 1–2 are merged.
+16. **`docs/PROJECT_STATE.md`** — Correct the MGRS status-table row per [OPTIMIZATION-14] once steps 1–2 are merged.
