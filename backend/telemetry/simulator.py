@@ -34,14 +34,22 @@ class TelemetrySimulator:
         self.height_m = height_m
         self.cell_size_m = cell_size_m
 
+        # Terrain mirror for terrain-following flight: UAVs hold a constant
+        # height ABOVE GROUND so they never clip beneath the rising slope.
+        from backend.engine.terrain import TerrainEngine
+        self.terrain = TerrainEngine(width_m, height_m, cell_size_m)
+
         # Ground Truth Targets:
         # Target 1: Equipped victim (Transceiver + GPR + Micro-Doppler Respiration + Mobile RF)
         # Target 2: Passive/Civilian victim (GPR + Dielectric Er=49 + RECCO + Micro-Doppler)
         # Target 3: Shallow/Surface exposed victim (Transceiver + Thermal + RGB Visual + Respiration)
+        # Ground-truth cells sit on the carved avalanche runout (gully
+        # centerline, verified slopes 23.5-26 deg) so the demo narrative is
+        # coherent: the release buries them, UAV passes expose them.
         self.true_victims = [
             {
-                "cell_x": 45,
-                "cell_y": 35,
+                "cell_x": 55,
+                "cell_y": 43,
                 "depth_m": 1.3,
                 "has_457": True,
                 "has_recco": False,
@@ -51,8 +59,8 @@ class TelemetrySimulator:
                 "relative_permittivity": 52.5
             },
             {
-                "cell_x": 70,
-                "cell_y": 60,
+                "cell_x": 61,
+                "cell_y": 30,
                 "depth_m": 2.1,
                 "has_457": False,
                 "has_recco": True,
@@ -62,8 +70,8 @@ class TelemetrySimulator:
                 "relative_permittivity": 49.0
             },
             {
-                "cell_x": 20,
-                "cell_y": 15,
+                "cell_x": 58,
+                "cell_y": 36,
                 "depth_m": 0.1,
                 "has_457": True,
                 "has_recco": False,
@@ -84,6 +92,12 @@ class TelemetrySimulator:
             "RGB_VISUAL": False
         }
         self.step_count = 0
+
+    def _agl_altitude(self, x_m: float, y_m: float, agl_m: float) -> float:
+        """Terrain-following altitude: local DEM elevation + above-ground hold."""
+        cx = min(self.terrain.cols - 1, max(0, int(x_m / self.cell_size_m)))
+        cy = min(self.terrain.rows - 1, max(0, int(y_m / self.cell_size_m)))
+        return float(self.terrain.elevation_grid[cy, cx]) + agl_m
 
     def set_sensor_fault(self, sensor_type: str, is_disabled: bool) -> None:
         if sensor_type in self.fault_states:
@@ -119,9 +133,12 @@ class TelemetrySimulator:
 
             # UAV Bravo: North-to-Mid Sector Sweep (Carries UWB GPR, Seismic, RECCO)
             uav2_x = self.width_m - ((t * 7.5) % self.width_m)
-            uav2_y = (0.50 * self.height_m) + ((int(t * 7.5 / self.width_m) * 35.0) % (0.44 * self.height_m))
+            uav2_y = (0.30 * self.height_m) + ((int(t * 7.5 / self.width_m) * 35.0) % (0.44 * self.height_m))
             uav2_lat = self.origin_lat + (uav2_y / 111111.0)
             uav2_lon = self.origin_lon + (uav2_x / (111111.0 * math.cos(math.radians(self.origin_lat))))
+
+            uav1_alt = self._agl_altitude(uav1_x, uav1_y, 55.0)
+            uav2_alt = self._agl_altitude(uav2_x, uav2_y, 52.0)
 
             uav_telemetry = [
                 UAVAssetTelemetry(
@@ -129,7 +146,7 @@ class TelemetrySimulator:
                     label="Alpha (457kHz/Thermal/RGB/Mobile)",
                     current_lat=uav1_lat,
                     current_lon=uav1_lon,
-                    current_alt_m=3862.0,
+                    current_alt_m=uav1_alt,
                     battery_pct=max(10.0, 100.0 - (self.step_count * 0.02)),
                     active_sensor_modalities=["TRANSCEIVER_457", "THERMAL_IR", "RGB_VISUAL", "MOBILE_RF"],
                     heading_deg=90.0 if (int(t * 8.0 / 500.0) % 2 == 0) else 270.0,
@@ -140,7 +157,7 @@ class TelemetrySimulator:
                     label="Bravo (UWB GPR/Seismic/RECCO)",
                     current_lat=uav2_lat,
                     current_lon=uav2_lon,
-                    current_alt_m=3858.0,
+                    current_alt_m=uav2_alt,
                     battery_pct=max(10.0, 98.0 - (self.step_count * 0.025)),
                     active_sensor_modalities=["GPR", "SEISMIC_ACOUSTIC", "RECCO"],
                     heading_deg=270.0 if (int(t * 7.5 / 500.0) % 2 == 0) else 90.0,
@@ -162,7 +179,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": TransceiverPayload(
                             sensor_id="RF_SNIFFER_01",
-                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=3862.0),
+                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=uav1_alt),
                             confidence_score=max(0.2, 0.94 - (dist1 * 0.12)),
                             flux_line_angle_deg=(dist1 * 18.0) % 360.0,
                             estimated_distance_m=dist1 * 5.0
@@ -175,7 +192,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": MobileRFPayload(
                             sensor_id="IMSI_CATCHER_01",
-                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=3862.0),
+                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=uav1_alt),
                             confidence_score=max(0.15, 0.88 - (dist1 * 0.14)),
                             channel_frequency_mhz=1800.0,
                             timing_advance_m=dist1 * 4.5
@@ -188,7 +205,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": ThermalPayload(
                             sensor_id="FLIR_BOSON_01",
-                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=3862.0, snow_depth_est_m=v["depth_m"]),
+                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=uav1_alt, snow_depth_est_m=v["depth_m"]),
                             confidence_score=max(0.3, 0.92 - (dist1 * 0.15)),
                             temperature_delta_c=4.2,
                             pixel_area_count=240,
@@ -202,7 +219,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": RGBPayload(
                             sensor_id="RGB_CAM_01",
-                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=3862.0),
+                            geo=GeospatialContext(lat=uav1_lat, lon=uav1_lon, altitude_m=uav1_alt),
                             confidence_score=max(0.2, 0.89 - (dist1 * 0.18)),
                             bounding_box_area_ratio=0.045,
                             equipment_color_match_score=0.91,
@@ -221,7 +238,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": GPRPayload(
                             sensor_id="GPR_RADAR_02",
-                            geo=GeospatialContext(lat=uav2_lat, lon=uav2_lon, altitude_m=3858.0, snow_density_kg_m3=340.0),
+                            geo=GeospatialContext(lat=uav2_lat, lon=uav2_lon, altitude_m=uav2_alt, snow_density_kg_m3=340.0),
                             confidence_score=max(0.3, 0.92 - (dist2 * 0.14)),
                             estimated_depth_m=v["depth_m"] + random.gauss(0, 0.04),
                             hyperbola_eccentricity=0.88,
@@ -239,7 +256,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": RECCOPayload(
                             sensor_id="RECCO_DETECTOR_02",
-                            geo=GeospatialContext(lat=uav2_lat, lon=uav2_lon, altitude_m=3858.0),
+                            geo=GeospatialContext(lat=uav2_lat, lon=uav2_lon, altitude_m=uav2_alt),
                             confidence_score=max(0.2, 0.90 - (dist2 * 0.15)),
                             harmonic_return_amplitude=65.0,
                             radar_cross_section_m2=0.45
@@ -252,7 +269,7 @@ class TelemetrySimulator:
                         "target_cell": (v["cell_x"], v["cell_y"]),
                         "payload": SeismicAcousticPayload(
                             sensor_id="SEISMIC_GEOPHONE_02",
-                            geo=GeospatialContext(lat=uav2_lat, lon=uav2_lon, altitude_m=3858.0),
+                            geo=GeospatialContext(lat=uav2_lat, lon=uav2_lon, altitude_m=uav2_alt),
                             confidence_score=max(0.1, 0.78 - (dist2 * 0.16)),
                             dominant_frequency_hz=18.5,
                             signal_to_noise_ratio_db=14.0,

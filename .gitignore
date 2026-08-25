@@ -36,3 +36,6 @@ codebase.xml
 
 #Presentation
 presentation/
+
+# UI review captures (local artifacts)
+.ui_review/

@@ -88,3 +88,36 @@ Phase 6      Physical Hardware Drivers         - Native SPI/UART driver for Semt
                                                - GeoTIFF digital elevation ingestion.
 Phase 7      Field Altitude Benchmarking       - Deployment in Siachen / Ladakh sectors.  [PLANNED]
 ===================================================================================================
+---
+
+## 4. Local Working State — UNPUSHED (2026-08-24)
+
+Everything below exists only in the local working tree; `origin/main` predates it. Read this section (plus [`.ai/TERMUX_RUNBOOK.md`](TERMUX_RUNBOOK.md) and [`.ui_review/ISSUES.md`](../.ui_review/ISSUES.md)) before continuing any session.
+
+### Frontend rebuild (complete, verified)
+
+- `frontend/app.js` monolith replaced by modular build: `index.html` shell, `css/app.css`, `js/{app,dem,fusion,map2d,relief3d}.js`, vendored `vendor/three.min.js` + `OrbitControls.js` (2021 r132-era), `link_state.js` watchdog.
+- New levers: `scripts/verify_frontend.js` (static id/asset/syntax check), `scripts/smoke_frontend.js` (headless DOM/WebGL-stub runtime test), `scripts/capture_ui.js` (proot chromium pixel captures → `.ui_review/`).
+- Visual audit round 1+2 fixed: golden-window ring label, SAR acronym casing, tablet CSS cascade collapse (media hides must follow base rules), hillshade red-tint bug, DSP drawer azimuth honesty, gizmo tilt reset on 2D, drawer-open control shift (−364px → −84px), 3D skirt theming (black slivers), UAV beam cap, zoom max 850, posterior blobs restored to wide soft halos (user-approved look from "Liked it" reference).
+- Known env limit: RELIEF 3D cannot render in the proot capture env (SwiftShader context loss) — pixel-audit on real hardware only.
+
+### Environment (see TERMUX_RUNBOOK.md for the full contract)
+
+- numpy restored to venv via `.pth` bridge to global Android-built 2.4.4; never pip-build C sdists on-device.
+- proot-distro Ubuntu 26.04 provisioned for headless captures; backend stays Termux-native under tmux.
+- uvicorn 0.52.4 + websockets 17.0.1 upgraded; 367 tests green throughout.
+
+### Agent-runtime relocation (validated + executed 2026-08-24)
+
+- **opencode moved to the official upstream Linux ARM64 build (1.18.21) inside Ubuntu proot**; `agy` (official Antigravity CLI 1.1.19) installed alongside. Config/auth/skills shared zero-migration via `XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointing at the bind-mounted Termux home (set in Ubuntu's `/root/.bashrc`).
+- Working model: persistent Ubuntu session via `proot-distro login ubuntu --bind $HOME:/termux-home --bind <repo>:/work`. No Termux wrapper aliases — the environment transition stays explicit.
+- **Removed**: the Hope2333 opencode build (Bun single-file + `bunfs_shim.so` Termux shim), the entire 49-52 package Termux glibc layer, and the 175 MB shim cache. Verified before removal that the opencode stack was the glibc layer's only consumer (ELF scan of `$PREFIX/bin`, `$PREFIX/lib`, `$PREFIX/share`, `$HOME` bin dirs). Post-removal battery: opencode/agy/git/clangd/node/python OK, FastAPI healthy, 367 tests green.
+- Known tradeoff: proot costs ~2× on syscall-heavy operations (measured: git status 21 ms native vs ~45 ms in-session) until the device is rooted and the same Ubuntu rootfs moves to chroot.
+- Rollback artifact: the old Hope2333 bashrc wrapper is preserved at `~/.config/opencode/termux-launcher-rollback.sh` (its binary/glibc dependencies are NOT reinstallable without re-adding the glibc layer; the official Ubuntu build is the supported path).
+
+### Planned for the next git push
+
+1. Frontend modular rebuild + all visual fixes above (working tree: modified `index.html`, deleted `app.js`, new `css/ js/ vendor/ scripts/`).
+2. `requirements.txt`: direct `websockets` pin removed (transitive via `uvicorn[standard]`, verified on 17.x), numpy bounded `<3`.
+3. Deferred doc sync (blocked until frontend approved): README module map + HUD description + verification commands; `.ai/PROJECT_STATE.md` rows 25-26; `.ai/ARCHITECTURE.md` frontend tree; `.ai/CONVENTIONS.md` zero-dependency rule (now "vendored, no CDN"); `HANDOFF.md` HUD box; `.ai/BACKLOG.md` watchdog wording.
+4. `.ui_review/` and `.ai/TERMUX_RUNBOOK.md` stay local/untracked or are committed deliberately — decide at push time.

@@ -10,7 +10,7 @@ from typing import Dict, Any, Set, List
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -142,8 +142,20 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# Mount static UI assets
+# Mount static UI assets. Browsers heuristic-cache responses without explicit
+# Cache-Control, which served stale JS after deploys (the "my fixes are not
+# showing" incident). no-cache forces a cheap ETag revalidation every load.
 frontend_path = Path(__file__).parent.parent / "frontend"
+
+
+@app.middleware("http")
+async def static_no_cache(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/frontend"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 app.mount("/frontend", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
 
 

@@ -23,8 +23,23 @@ class TerrainEngine:
         y = (np.arange(self.rows) + 0.5) * self.cell_size_m
         xx, yy = np.meshgrid(x, y)
 
-        # Himalayan Avalanche Gully Profile
+        # Himalayan Avalanche Gully Profile. Mirrored analytically in
+        # frontend/js/dem.js — keep the two formulas mathematically identical.
         elevation = 3800.0 + (yy * 0.42) + 25.0 * np.sin(xx / 70.0)
+        # Start-zone peak (release bowl west of the sector crest).
+        elevation += 110.0 * np.exp(-(((xx - 110.0) / 90.0) ** 2 + ((yy - 430.0) / 60.0) ** 2))
+        # Eastern ridge wall for sector asymmetry.
+        elevation += 70.0 * np.exp(-(((xx - 465.0) / 55.0) ** 2 + ((yy - 300.0) / 170.0) ** 2))
+        # Carved avalanche track: straight release-to-runout channel, steep
+        # flanks (>30 deg), gentle floor where victims deposit. Victim cells
+        # (45,35) (70,60) (20,15) stay inside the 15-32 deg burial band.
+        ax, ay, bx, by = 170.0, 430.0, 330.0, 100.0
+        abx, aby = bx - ax, by - ay
+        t = np.clip(((xx - ax) * abx + (yy - ay) * aby) / (abx * abx + aby * aby), 0.0, 1.0)
+        dxp = xx - (ax + t * abx)
+        dyp = yy - (ay + t * aby)
+        elevation -= 16.0 * np.exp(-((dxp ** 2 + dyp ** 2) / (28.0 ** 2)))
+
         dy, dx = np.gradient(elevation, self.cell_size_m, self.cell_size_m)
         slope_rad = np.arctan(np.hypot(dx, dy))
         slope_deg = np.degrees(slope_rad)
