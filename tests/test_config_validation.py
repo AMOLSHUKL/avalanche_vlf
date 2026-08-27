@@ -33,7 +33,7 @@ def test_valid_base_config_loads(isolated_loader):
 
 def test_inverted_triage_thresholds_rejected(tmp_path):
     cfg = tmp_path / "bad_thresholds.yaml"
-    with open("config/fusion_parameters.yaml", "r", encoding="utf-8") as f:
+    with open("config/fusion_parameters.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     data["thresholds"]["tau_p1"] = 0.40  # below tau_p2 (0.45)
     _write_cfg(cfg, data)
@@ -48,7 +48,7 @@ def test_inverted_triage_thresholds_rejected(tmp_path):
 
 def test_degenerate_priors_rejected(tmp_path):
     cfg = tmp_path / "bad_priors.yaml"
-    with open("config/fusion_parameters.yaml", "r", encoding="utf-8") as f:
+    with open("config/fusion_parameters.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     data["sensor_priors"]["GPR"]["p_z_given_h"] = 0.05  # below p_z_given_not_h (0.07)
     _write_cfg(cfg, data)
@@ -62,7 +62,7 @@ def test_degenerate_priors_rejected(tmp_path):
 
 
 def test_hot_swap_rejects_invalid_partial_update(isolated_loader):
-    loader, cfg = isolated_loader
+    loader, _cfg = isolated_loader
     version_before = loader.config["version"]
 
     with pytest.raises(ConfigValidationError):
@@ -76,7 +76,7 @@ def test_hot_swap_rejects_invalid_partial_update(isolated_loader):
 
 
 def test_hot_swap_applies_valid_partial_update(isolated_loader):
-    loader, cfg = isolated_loader
+    loader, _cfg = isolated_loader
     new_version = loader.update_parameters_in_memory(
         {"thresholds": {"tau_p1": 0.88}}, "TEST_COMMANDER"
     )
@@ -96,7 +96,7 @@ def test_origin_lat_outside_utm_band_rejected(tmp_path):
     """origin_lat=87 passes a naive [-90, 90] check but explodes inside grid
     construction; the config boundary must reject it up front."""
     cfg = tmp_path / "bad_origin.yaml"
-    with open("config/fusion_parameters.yaml", "r", encoding="utf-8") as f:
+    with open("config/fusion_parameters.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     data["grid"]["origin_lat"] = 87.0
     _write_cfg(cfg, data)
@@ -111,7 +111,7 @@ def test_origin_lat_outside_utm_band_rejected(tmp_path):
 
 def test_origin_lat_accepts_full_operational_band(tmp_path):
     cfg = tmp_path / "edge_origin.yaml"
-    with open("config/fusion_parameters.yaml", "r", encoding="utf-8") as f:
+    with open("config/fusion_parameters.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     data["grid"]["origin_lat"] = -80.0
     _write_cfg(cfg, data)

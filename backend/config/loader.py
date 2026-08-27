@@ -13,7 +13,7 @@ import tempfile
 import threading
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional
 
 import yaml
 
@@ -26,8 +26,8 @@ EVIDENCE_GROUPS = ("GROUP_A_ELECTRONIC", "GROUP_B_SUBSURFACE", "GROUP_C_SURFACE"
 
 
 def _deep_update(
-    base_dict: Dict[str, Any], update_dict: Dict[str, Any]
-) -> Dict[str, Any]:
+    base_dict: dict[str, Any], update_dict: dict[str, Any]
+) -> dict[str, Any]:
     """Recursively merge nested dicts without clobbering unmentioned root keys."""
     for k, v in update_dict.items():
         if isinstance(v, dict) and k in base_dict and isinstance(base_dict[k], dict):
@@ -48,7 +48,7 @@ def _as_float(value: Any, key: str) -> float:
     return float(value)
 
 
-def _validate_config(data: Dict[str, Any]) -> None:
+def _validate_config(data: dict[str, Any]) -> None:
     """Enforce the full fusion-parameter schema contract.
 
     Raises ConfigValidationError.
@@ -76,8 +76,8 @@ def _validate_config(data: Dict[str, Any]) -> None:
     sigma = _as_float(grid.get("lkp_sigma_m", 85.0), "grid.lkp_sigma_m")
     _require(sigma > 0, "grid.lkp_sigma_m must be positive")
 
-    cols = int(round(width / cell))
-    rows = int(round(height / cell))
+    cols = round(width / cell)
+    rows = round(height / cell)
     lkp = grid.get("lkp_cell", [cols // 2, rows // 2])
     _require(isinstance(lkp, (list, tuple)) and len(lkp) == 2,
              "grid.lkp_cell must be a [x, y] pair")
@@ -166,14 +166,14 @@ class ConfigLoader:
     _instance: Optional["ConfigLoader"] = None
     _lock = threading.RLock()
 
-    def __new__(cls, config_path: Optional[str] = None):
+    def __new__(cls, config_path: str | None = None):
         with cls._lock:
             if cls._instance is None:
-                cls._instance = super(ConfigLoader, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance._initialized = False
             return cls._instance
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         with self._lock:
             target_path = config_path or os.getenv(
                 "FUSION_CONFIG_PATH",
@@ -182,7 +182,7 @@ class ConfigLoader:
             if getattr(self, "_initialized", False) and getattr(self, "config_path", None) == target_path:
                 return
             self.config_path = target_path
-            self._config_data: Dict[str, Any] = {}
+            self._config_data: dict[str, Any] = {}
             self.reload()
             self._initialized = True
 
@@ -192,18 +192,18 @@ class ConfigLoader:
         with cls._lock:
             cls._instance = None
 
-    def reload(self) -> Dict[str, Any]:
+    def reload(self) -> dict[str, Any]:
         """Load and validate configuration from disk."""
         with self._lock:
             if not os.path.exists(self.config_path):
                 raise FileNotFoundError(f"Configuration file does not exist: {self.config_path}")
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 new_data = yaml.safe_load(f)
             _validate_config(new_data)
             self._config_data = new_data
             return self._config_data
 
-    def update_parameters_in_memory(self, new_content: Dict[str, Any], activated_by: str = "REST_API") -> int:
+    def update_parameters_in_memory(self, new_content: dict[str, Any], activated_by: str = "REST_API") -> int:
         """
         Validate and apply a partial parameter update, bump the version, and
         persist atomically (write-to-temp then rename) so a crash mid-write
@@ -235,32 +235,29 @@ class ConfigLoader:
             except OSError:
                 # Disk persistence is best-effort on read-only mounts; memory
                 # state remains authoritative and already validated.
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
+                pass
             self._config_data = candidate
             return self._config_data["version"]
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """Validated configuration snapshot. Mutations never reach engine state."""
         with self._lock:
             return copy.deepcopy(self._config_data)
 
-    def get_thresholds(self) -> Dict[str, float]:
+    def get_thresholds(self) -> dict[str, float]:
         with self._lock:
             return copy.deepcopy(self._config_data.get("thresholds", {}))
 
-    def get_group_caps(self) -> Dict[str, float]:
+    def get_group_caps(self) -> dict[str, float]:
         with self._lock:
             return copy.deepcopy(self._config_data.get("group_caps", {}))
 
-    def get_group_weights(self) -> Dict[str, float]:
+    def get_group_weights(self) -> dict[str, float]:
         with self._lock:
             return copy.deepcopy(self._config_data.get("group_weights", {}))
 
-    def get_sensor_priors(self, sensor_type: Union[str, Enum]) -> Dict[str, float]:
+    def get_sensor_priors(self, sensor_type: str | Enum) -> dict[str, float]:
         with self._lock:
             key = sensor_type.value if isinstance(sensor_type, Enum) else str(sensor_type)
             priors = self._config_data.get("sensor_priors", {})

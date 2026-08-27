@@ -12,15 +12,15 @@ import math
 import pytest
 
 from backend.engine.geo import (
-    geodetic_to_utm,
     geodetic_to_mgrs,
-    utm_to_geodetic,
+    geodetic_to_utm,
     lon_to_utm_zone,
-    utm_central_meridian_deg,
-    mgrs_latitude_band,
     mgrs_100km_square_letters,
+    mgrs_latitude_band,
     mission_grid_frame_from_latlon,
     normalize_lon_deg,
+    utm_central_meridian_deg,
+    utm_to_geodetic,
 )
 
 
@@ -142,7 +142,7 @@ def test_mgrs_square_letters_exhaustive_no_crash_and_known_sequence(zone, northi
 
 
 @pytest.mark.parametrize("zone,expected_offset", [(43, 0), (44, 5)])
-@pytest.mark.parametrize("row_index", range(0, 20))
+@pytest.mark.parametrize("row_index", range(20))
 def test_mgrs_row_letters_exhaustive_cycle(zone, expected_offset, row_index):
     """Every row index must resolve without crashing and follow the A-V minus
     I,O alphabet with the even-zone 'F' offset; the cycle repeats after 20

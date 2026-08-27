@@ -7,18 +7,18 @@ indirectly through end-to-end fusion scenarios.
 import pytest
 
 from backend.config.loader import ConfigLoader
-from backend.engine.adapters.registry import AdapterRegistry
 from backend.engine.adapters.base import BaseSensorAdapter
+from backend.engine.adapters.registry import AdapterRegistry
 from backend.schemas.sensors import (
-    TransceiverPayload,
-    RECCOPayload,
-    MobileRFPayload,
-    GPRPayload,
-    SeismicAcousticPayload,
-    ThermalPayload,
-    RGBPayload,
     GeospatialContext,
+    GPRPayload,
+    MobileRFPayload,
+    RECCOPayload,
+    RGBPayload,
+    SeismicAcousticPayload,
     SensorTypeEnum,
+    ThermalPayload,
+    TransceiverPayload,
 )
 
 QUALITY_FLOOR = 0.01
@@ -31,7 +31,7 @@ def registry():
 
 
 def _geo(**overrides) -> GeospatialContext:
-    defaults = dict(lat=34.1839, lon=77.5621, altitude_m=3860.0)
+    defaults = {"lat": 34.1839, "lon": 77.5621, "altitude_m": 3860.0}
     defaults.update(overrides)
     return GeospatialContext(**defaults)
 

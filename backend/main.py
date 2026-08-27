@@ -6,9 +6,9 @@ full modality fault injection, and backpressure-protected WebSockets.
 import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import Any, Dict, Set
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,8 +34,8 @@ _DEFAULT_ORIGINS = ["*"]
 class ConnectionManager:
     """Manages active WebSocket subscribers with frame-drop backpressure buffers."""
     def __init__(self, max_buffer_size: int = 5):
-        self.active_connections: Set[WebSocket] = set()
-        self.client_queues: Dict[WebSocket, asyncio.Queue] = {}
+        self.active_connections: set[WebSocket] = set()
+        self.client_queues: dict[WebSocket, asyncio.Queue] = {}
         self.max_buffer_size = max_buffer_size
 
     async def connect(self, websocket: WebSocket) -> asyncio.Queue:
@@ -49,14 +49,12 @@ class ConnectionManager:
         self.active_connections.discard(websocket)
         self.client_queues.pop(websocket, None)
 
-    async def broadcast(self, message: Dict[str, Any]):
+    async def broadcast(self, message: dict[str, Any]):
         for ws, q in list(self.client_queues.items()):
             try:
                 if q.full():
-                    try:
+                    with suppress(asyncio.QueueEmpty):
                         q.get_nowait()
-                    except asyncio.QueueEmpty:
-                        pass
                 q.put_nowait(message)
             except Exception:
                 logger.exception("Dropping unresponsive WebSocket client")
@@ -165,7 +163,7 @@ class FailureInjectionRequest(BaseModel):
 
 
 class ParameterUpdateRequest(BaseModel):
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     activated_by: str = Field(default="COMMANDER_OVERRIDE")
 
 

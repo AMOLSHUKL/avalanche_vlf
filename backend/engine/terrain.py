@@ -3,7 +3,6 @@ Digital Elevation Model (DEM) and Monotonically Sound Rescuer Hazard Calculation
 """
 
 import math
-from typing import Tuple
 
 import numpy as np
 
@@ -13,11 +12,11 @@ class TerrainEngine:
         self.width_m = width_m
         self.height_m = height_m
         self.cell_size_m = cell_size_m
-        self.cols = int(round(width_m / cell_size_m))
-        self.rows = int(round(height_m / cell_size_m))
+        self.cols = round(width_m / cell_size_m)
+        self.rows = round(height_m / cell_size_m)
         self.elevation_grid, self.slope_grid, self.grad_dx, self.grad_dy = self._generate_dem()
 
-    def _generate_dem(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def _generate_dem(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # Sample at cell centers: spacing equals cell_size_m exactly, so the
         # finite-difference gradient below carries no spacing bias.
         x = (np.arange(self.cols) + 0.5) * self.cell_size_m
@@ -50,7 +49,7 @@ class TerrainEngine:
         self,
         cell_x: int,
         cell_y: int,
-        lkp_cell: Tuple[int, int],
+        lkp_cell: tuple[int, int],
         sigma_lkp_m: float = 85.0
     ) -> float:
         """Contextual spatial prior: LKP Gaussian x slope-band likelihood."""

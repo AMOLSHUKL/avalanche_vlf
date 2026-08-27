@@ -2,20 +2,19 @@
 Pydantic v2 Sensor Payload Contracts with Physical Validation Bounds,
 Micro-Doppler Respiration Signatures, Dielectric Permittivity, and UTC Enforcement.
 """
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional
+from datetime import UTC, datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class EvidenceGroupEnum(str, Enum):
+class EvidenceGroupEnum(StrEnum):
     GROUP_A_ELECTRONIC = "GROUP_A_ELECTRONIC"
     GROUP_B_SUBSURFACE = "GROUP_B_SUBSURFACE"
     GROUP_C_SURFACE = "GROUP_C_SURFACE"
 
 
-class SensorTypeEnum(str, Enum):
+class SensorTypeEnum(StrEnum):
     TRANSCEIVER_457 = "TRANSCEIVER_457"
     RECCO = "RECCO"
     MOBILE_RF = "MOBILE_RF"
@@ -45,17 +44,17 @@ class BaseSensorPayload(BaseModel):
     sensor_id: str = Field(..., min_length=2, max_length=64)
     sensor_type: SensorTypeEnum
     evidence_group: EvidenceGroupEnum
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     geo: GeospatialContext
-    raw_signal_strength_dbm: Optional[float] = Field(None, ge=-150.0, le=30.0)
+    raw_signal_strength_dbm: float | None = Field(None, ge=-150.0, le=30.0)
     confidence_score: float = Field(..., ge=0.0, le=1.0)
 
     @field_validator("timestamp")
     @classmethod
     def enforce_utc(cls, v: datetime) -> datetime:
         if v.tzinfo is None:
-            return v.replace(tzinfo=timezone.utc)
-        return v.astimezone(timezone.utc)
+            return v.replace(tzinfo=UTC)
+        return v.astimezone(UTC)
 
 
 class TransceiverPayload(BaseSensorPayload):
@@ -76,9 +75,9 @@ class RECCOPayload(BaseSensorPayload):
 class MobileRFPayload(BaseSensorPayload):
     sensor_type: SensorTypeEnum = SensorTypeEnum.MOBILE_RF
     evidence_group: EvidenceGroupEnum = EvidenceGroupEnum.GROUP_A_ELECTRONIC
-    imsi_hash: Optional[str] = Field(None, max_length=64, description="Anonymized SHA-256 subscriber identifier")
+    imsi_hash: str | None = Field(None, max_length=64, description="Anonymized SHA-256 subscriber identifier")
     channel_frequency_mhz: float = Field(..., ge=700.0, le=6000.0, description="Uplink carrier frequency")
-    timing_advance_m: Optional[float] = Field(None, ge=0.0, le=5000.0, description="Cellular propagation distance")
+    timing_advance_m: float | None = Field(None, ge=0.0, le=5000.0, description="Cellular propagation distance")
 
 
 class GPRPayload(BaseSensorPayload):
@@ -93,7 +92,7 @@ class GPRPayload(BaseSensorPayload):
         le=85.0,
         description="Calculated target dielectric permittivity (Human muscle/tissue Er ~ 50-55, Rock Er ~ 6-9, Snow Er ~ 3.2)"
     )
-    micro_doppler_frequency_hz: Optional[float] = Field(
+    micro_doppler_frequency_hz: float | None = Field(
         default=None,
         ge=0.1,
         le=1.0,

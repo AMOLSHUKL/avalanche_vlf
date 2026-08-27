@@ -5,7 +5,8 @@ and Non-Blocking Computational Stream Execution.
 """
 import math
 import random
-from typing import Any, Dict, Generator, List
+from collections.abc import Generator
+from typing import Any
 
 from backend.schemas.domain import MissionPhaseEnum, UAVAssetTelemetry
 from backend.schemas.sensors import (
@@ -83,7 +84,7 @@ class TelemetrySimulator:
             },
         ]
 
-        self.fault_states: Dict[str, bool] = {
+        self.fault_states: dict[str, bool] = {
             "TRANSCEIVER_457": False,
             "RECCO": False,
             "MOBILE_RF": False,
@@ -119,7 +120,7 @@ class TelemetrySimulator:
         else:
             return MissionPhaseEnum.SAR_VECTORING
 
-    def generate_flight_stream(self) -> Generator[Dict[str, Any], None, None]:
+    def generate_flight_stream(self) -> Generator[dict[str, Any], None, None]:
         """Pure computational generator streaming UAV kinematics and multi-modal telemetry."""
         while True:
             self.step_count += 1
@@ -166,7 +167,7 @@ class TelemetrySimulator:
                 ).model_dump(mode="json")
             ]
 
-            sensor_events: List[Dict[str, Any]] = []
+            sensor_events: list[dict[str, Any]] = []
             c1_x, c1_y = int(uav1_x / self.cell_size_m), int(uav1_y / self.cell_size_m)
             c2_x, c2_y = int(uav2_x / self.cell_size_m), int(uav2_y / self.cell_size_m)
 
