@@ -4,7 +4,8 @@ Operational Phase Tracking, Marker Releases, and Safe Responder Approach Vectors
 """
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List, Generic, TypeVar
+from typing import Generic, List, Optional, TypeVar
+
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")

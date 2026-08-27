@@ -1,41 +1,6 @@
-# Byte-compiled / optimized / DLL files
+```
 __pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual Environments
-venv/
-.venv/
-env/
-ENV/
-
-# Testing & Cache
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Runtime mission logs & telemetry dumps
-logs/*.jsonl
-logs/*.log
-*.log
-
-# Temporary / Scratchpad files
-str.txt
-codebase.xml
-
-# Environment variables & Local configuration
-.env
-.env.*
-!.env.example
-
-# IDE / Tooling metadata
-.opencode/
-.vscode/
-.idea/
-.DS_Store
-
-#Presentation
-presentation/
-
-# UI review captures (local artifacts)
-.ui_review/
+*.pyc
+*.pyo
+*.pyd
+```

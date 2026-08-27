@@ -6,19 +6,19 @@ full modality fault injection, and backpressure-protected WebSockets.
 import asyncio
 import logging
 import os
-from typing import Dict, Any, Set, List
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any, Dict, Set
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.config.loader import ConfigLoader
-from backend.engine.fusion import FusionEngine
 from backend.engine.adapters.registry import AdapterRegistry
+from backend.engine.fusion import FusionEngine
 from backend.engine.logger import TelemetryFineTuneLogger
 from backend.schemas.sensors import SensorTypeEnum
 from backend.telemetry.simulator import TelemetrySimulator

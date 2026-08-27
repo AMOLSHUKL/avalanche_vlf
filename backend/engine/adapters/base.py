@@ -1,9 +1,10 @@
 """
 Abstract Base Sensor Adapter with Symmetric Negative-Evidence Log-Likelihood Formulation.
 """
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
 from typing import Any
+
 from backend.config.loader import ConfigLoader
 from backend.schemas.sensors import BaseSensorPayload
 

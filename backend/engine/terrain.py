@@ -3,8 +3,9 @@ Digital Elevation Model (DEM) and Monotonically Sound Rescuer Hazard Calculation
 """
 
 import math
-import numpy as np
 from typing import Tuple
+
+import numpy as np
 
 
 class TerrainEngine:

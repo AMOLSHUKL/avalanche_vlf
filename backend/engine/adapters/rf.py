@@ -3,14 +3,15 @@ Polymorphic Adapter for Group A Electronic Sensors.
 """
 
 from typing import Any
+
 from backend.config.loader import ConfigLoader
 from backend.engine.adapters.base import BaseSensorAdapter
 from backend.schemas.sensors import (
     BaseSensorPayload,
-    TransceiverPayload,
-    RECCOPayload,
     MobileRFPayload,
-    SensorTypeEnum
+    RECCOPayload,
+    SensorTypeEnum,
+    TransceiverPayload,
 )
 
 

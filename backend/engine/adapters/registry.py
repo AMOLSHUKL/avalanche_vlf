@@ -3,14 +3,15 @@ Polymorphic Adapter Registry Bound to Dynamic ConfigLoader.
 """
 
 from typing import Dict
+
 from backend.config.loader import ConfigLoader
-from backend.schemas.sensors import SensorTypeEnum, BaseSensorPayload
 from backend.engine.adapters.base import BaseSensorAdapter
-from backend.engine.adapters.rf import SimulatedRFAdapter
 from backend.engine.adapters.gpr import SimulatedGPRAdapter
+from backend.engine.adapters.optical import OpticalAdapter
+from backend.engine.adapters.rf import SimulatedRFAdapter
 from backend.engine.adapters.seismic import SeismicAdapter
 from backend.engine.adapters.thermal import ThermalAdapter
-from backend.engine.adapters.optical import OpticalAdapter
+from backend.schemas.sensors import BaseSensorPayload, SensorTypeEnum
 
 
 class AdapterRegistry:

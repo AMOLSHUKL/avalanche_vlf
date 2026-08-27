@@ -4,9 +4,10 @@ Concrete Adapter for Group C Surface Long-Wave Infrared (LWIR) Thermal Imaging.
 
 import math
 from typing import Any
+
 from backend.config.loader import ConfigLoader
 from backend.engine.adapters.base import BaseSensorAdapter
-from backend.schemas.sensors import ThermalPayload, SensorTypeEnum
+from backend.schemas.sensors import SensorTypeEnum, ThermalPayload
 
 
 class ThermalAdapter(BaseSensorAdapter):

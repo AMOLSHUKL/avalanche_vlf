@@ -40,7 +40,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-
 # --- WGS84 ellipsoid constants ---
 _WGS84_A = 6378137.0                      # semi-major axis (m)
 _WGS84_F = 1.0 / 298.257223563            # flattening

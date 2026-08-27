@@ -1,11 +1,11 @@
 """
 Non-Blocking Asynchronous Structured JSONL Inference and Verification Logger.
 """
-import json
 import asyncio
+import json
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 
 class TelemetryFineTuneLogger:
