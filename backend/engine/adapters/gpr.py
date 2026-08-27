@@ -4,6 +4,7 @@ Concrete Adapter for Group B Subsurface Ground Penetrating Radar (GPR).
 
 import math
 from typing import Any
+
 from backend.config.loader import ConfigLoader
 from backend.engine.adapters.base import BaseSensorAdapter
 from backend.schemas.sensors import GPRPayload, SensorTypeEnum

@@ -7,14 +7,15 @@ malformed value (a string where a float belongs, an inverted threshold pair,
 an out-of-range prior) fails loudly at the boundary instead of silently
 corrupting the fusion engine's arithmetic mid-mission.
 """
-import os
 import copy
-import yaml
-import threading
+import os
 import tempfile
-from typing import Dict, Any, Optional, Union
+import threading
 from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
+import yaml
 
 
 class ConfigValidationError(ValueError):
@@ -24,7 +25,9 @@ class ConfigValidationError(ValueError):
 EVIDENCE_GROUPS = ("GROUP_A_ELECTRONIC", "GROUP_B_SUBSURFACE", "GROUP_C_SURFACE")
 
 
-def _deep_update(base_dict: Dict[str, Any], update_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_update(
+    base_dict: Dict[str, Any], update_dict: Dict[str, Any]
+) -> Dict[str, Any]:
     """Recursively merge nested dicts without clobbering unmentioned root keys."""
     for k, v in update_dict.items():
         if isinstance(v, dict) and k in base_dict and isinstance(base_dict[k], dict):
@@ -46,7 +49,10 @@ def _as_float(value: Any, key: str) -> float:
 
 
 def _validate_config(data: Dict[str, Any]) -> None:
-    """Enforce the full fusion-parameter schema contract. Raises ConfigValidationError."""
+    """Enforce the full fusion-parameter schema contract.
+
+    Raises ConfigValidationError.
+    """
     _require(isinstance(data, dict), "configuration root must be a mapping")
 
     grid = data.get("grid")
@@ -57,8 +63,10 @@ def _validate_config(data: Dict[str, Any]) -> None:
     height = _as_float(grid["height_m"], "grid.height_m")
     cell = _as_float(grid["cell_size_m"], "grid.cell_size_m")
     _require(width > 0 and height > 0 and cell > 0, "grid dimensions must be positive")
-    _require(width % cell == 0 and height % cell == 0,
-             "grid.width_m and grid.height_m must be integer multiples of grid.cell_size_m")
+    _require(
+        width % cell == 0 and height % cell == 0,
+        "grid.width_m and grid.height_m must be integer multiples of grid.cell_size_m",
+    )
     origin_lat = _as_float(grid.get("origin_lat"), "grid.origin_lat")
     origin_lon = _as_float(grid.get("origin_lon"), "grid.origin_lon")
     _require(-80.0 <= origin_lat <= 84.0,
@@ -74,8 +82,10 @@ def _validate_config(data: Dict[str, Any]) -> None:
     _require(isinstance(lkp, (list, tuple)) and len(lkp) == 2,
              "grid.lkp_cell must be a [x, y] pair")
     lx, ly = lkp
-    _require(isinstance(lx, int) and isinstance(ly, int) and 0 <= lx < cols and 0 <= ly < rows,
-             f"grid.lkp_cell ({lx}, {ly}) outside grid bounds [0..{cols - 1}, 0..{rows - 1}]")
+    _require(
+        isinstance(lx, int) and isinstance(ly, int) and 0 <= lx < cols and 0 <= ly < rows,
+        f"grid.lkp_cell ({lx}, {ly}) outside grid bounds [0..{cols - 1}, 0..{rows - 1}]",
+    )
 
     mission = data.get("mission", {})
     _require(isinstance(mission, dict), "section 'mission' must be a mapping")

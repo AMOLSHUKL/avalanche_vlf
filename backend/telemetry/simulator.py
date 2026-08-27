@@ -5,18 +5,19 @@ and Non-Blocking Computational Stream Execution.
 """
 import math
 import random
-from typing import Generator, Dict, Any, List
+from typing import Any, Dict, Generator, List
+
+from backend.schemas.domain import MissionPhaseEnum, UAVAssetTelemetry
 from backend.schemas.sensors import (
-    TransceiverPayload,
-    RECCOPayload,
-    MobileRFPayload,
+    GeospatialContext,
     GPRPayload,
+    MobileRFPayload,
+    RECCOPayload,
+    RGBPayload,
     SeismicAcousticPayload,
     ThermalPayload,
-    RGBPayload,
-    GeospatialContext
+    TransceiverPayload,
 )
-from backend.schemas.domain import UAVAssetTelemetry, MissionPhaseEnum
 
 
 class TelemetrySimulator:

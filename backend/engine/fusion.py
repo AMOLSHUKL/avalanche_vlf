@@ -15,21 +15,21 @@ import math
 import time
 from collections import deque
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 from backend.config.loader import ConfigLoader
 from backend.engine.geo import geodetic_to_mgrs, mission_grid_frame_from_latlon
 from backend.engine.logger import TelemetryFineTuneLogger
 from backend.engine.ports import MissionEventSink
 from backend.engine.terrain import TerrainEngine
-from backend.schemas.sensors import BaseSensorPayload, GPRPayload
 from backend.schemas.domain import (
+    DirectiveTypeEnum,
     GridZoneState,
     PriorityZoneEnum,
-    ZoneStatusEnum,
     TacticalDirective,
-    DirectiveTypeEnum
+    ZoneStatusEnum,
 )
+from backend.schemas.sensors import BaseSensorPayload, GPRPayload
 
 # Fallback only; config "grid.lkp_cell" is the authoritative source.
 DEFAULT_LKP_CELL = (50, 40)

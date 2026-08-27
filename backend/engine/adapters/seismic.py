@@ -4,6 +4,7 @@ Concrete Adapter for Group B Subsurface Seismic & Micro-Acoustic Life-Sign Sensi
 
 import math
 from typing import Any
+
 from backend.config.loader import ConfigLoader
 from backend.engine.adapters.base import BaseSensorAdapter
 from backend.schemas.sensors import SeismicAcousticPayload, SensorTypeEnum

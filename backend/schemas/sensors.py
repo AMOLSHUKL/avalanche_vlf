@@ -5,7 +5,8 @@ Micro-Doppler Respiration Signatures, Dielectric Permittivity, and UTC Enforceme
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EvidenceGroupEnum(str, Enum):

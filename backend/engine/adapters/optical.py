@@ -3,6 +3,7 @@ Concrete Adapter for Group C Surface High-Resolution RGB Visual Sensing.
 """
 
 from typing import Any
+
 from backend.config.loader import ConfigLoader
 from backend.engine.adapters.base import BaseSensorAdapter
 from backend.schemas.sensors import RGBPayload, SensorTypeEnum
