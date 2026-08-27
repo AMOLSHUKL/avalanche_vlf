@@ -3,34 +3,33 @@ Non-Blocking Asynchronous Structured JSONL Inference and Verification Logger.
 """
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 class TelemetryFineTuneLogger:
-    def __init__(self, log_dir: Optional[str] = None):
-        self.log_dir = Path(log_dir or (Path(__file__).parent.parent.parent / "logs"))
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        session_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        self.session_file = self.log_dir / f"sar_mission_{session_id}.jsonl"
+    def __init__(self, log_dir: str | None = None):
+        # Disabled: logs folder removed from project
+        self.log_dir = None
+        self.session_file = None
 
     def _write_line_sync(self, line: str) -> None:
-        with open(self.session_file, "a", encoding="utf-8") as f:
-            f.write(line + "\n")
+        # Disabled: no-op since logging is disabled
+        pass
 
     async def log_inference_event(
         self,
         zone_id: str,
-        cell_coords: Tuple[int, int],
-        sensor_payload: Dict[str, Any],
-        group_llr_snapshot: Dict[str, float],
+        cell_coords: tuple[int, int],
+        sensor_payload: dict[str, Any],
+        group_llr_snapshot: dict[str, float],
         posterior_p: float,
-        directive_issued: Optional[str] = None
+        directive_issued: str | None = None
     ) -> None:
         event = {
             "record_type": "INFERENCE_STEP",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "zone_id": zone_id,
             "cell_x": cell_coords[0],
             "cell_y": cell_coords[1],
@@ -48,12 +47,12 @@ class TelemetryFineTuneLogger:
         directive_id: str,
         zone_id: str,
         outcome: str,
-        actual_depth_m: Optional[float] = None,
+        actual_depth_m: float | None = None,
         notes: str = ""
     ) -> None:
         record = {
             "record_type": "GROUND_TRUTH_VERIFICATION",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "directive_id": directive_id,
             "zone_id": zone_id,
             "outcome": outcome,

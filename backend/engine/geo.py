@@ -285,8 +285,8 @@ def geodetic_to_mgrs(lat_deg: float, lon_deg: float, precision_digits: int = 5) 
     col_letter, row_letter = mgrs_100km_square_letters(utm.zone, utm.easting_m, utm.northing_m)
 
     divisor = 10.0 ** (5 - precision_digits)
-    east_suffix = int(math.floor(utm.easting_m % 100000.0 / divisor))
-    north_suffix = int(math.floor(utm.northing_m % 100000.0 / divisor))
+    east_suffix = math.floor(utm.easting_m % 100000.0 / divisor)
+    north_suffix = math.floor(utm.northing_m % 100000.0 / divisor)
 
     return (
         f"{utm.zone:02d}{band} {col_letter}{row_letter} "

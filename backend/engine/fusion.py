@@ -14,8 +14,8 @@ import asyncio
 import math
 import time
 from collections import deque
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from backend.config.loader import ConfigLoader
 from backend.engine.geo import geodetic_to_mgrs, mission_grid_frame_from_latlon
@@ -47,8 +47,8 @@ def latlon_to_mgrs(lat: float, lon: float) -> str:
 class FusionEngine:
     def __init__(
         self,
-        config_loader: Optional[ConfigLoader] = None,
-        logger: Optional[MissionEventSink] = None,
+        config_loader: ConfigLoader | None = None,
+        logger: MissionEventSink | None = None,
     ):
         self.config_loader = config_loader or ConfigLoader()
         grid_cfg = self.config_loader.config["grid"]
@@ -69,28 +69,28 @@ class FusionEngine:
         self._state_lock = asyncio.Lock()
         self.cols = self.terrain.cols
         self.rows = self.terrain.rows
-        self.grid: Dict[str, GridZoneState] = {}
-        self.active_directives: List[TacticalDirective] = []
+        self.grid: dict[str, GridZoneState] = {}
+        self.active_directives: list[TacticalDirective] = []
         # Strong references to fire-and-forget logging tasks; without these,
         # asyncio may garbage-collect mid-flight tasks and swallow errors.
         self._bg_tasks: set[asyncio.Task] = set()
         # Persistent group accumulators: zone_id -> { group_name -> float }
-        self._group_cumulative_scores: Dict[str, Dict[str, float]] = {}
+        self._group_cumulative_scores: dict[str, dict[str, float]] = {}
         # Monotonic timestamp of the last evidence update per zone (leak decay)
-        self._last_update_monotonic: Dict[str, float] = {}
+        self._last_update_monotonic: dict[str, float] = {}
         # Spatial pass tracking: zone_id -> { last_pass_time, current_pass_score, sample_count }
-        self._pass_tracker: Dict[str, Dict[str, float]] = {}
+        self._pass_tracker: dict[str, dict[str, float]] = {}
         # Multi-pass history deque for temporal persistence: zone_id -> deque of pass averages
-        self._temporal_pass_history: Dict[str, deque] = {}
+        self._temporal_pass_history: dict[str, deque] = {}
         lkp_cell = tuple(grid_cfg.get("lkp_cell", DEFAULT_LKP_CELL))
-        self.lkp_cell: Tuple[int, int] = (int(lkp_cell[0]), int(lkp_cell[1]))
+        self.lkp_cell: tuple[int, int] = (int(lkp_cell[0]), int(lkp_cell[1]))
         # Shared georeference for LoRa target vectors and MGRS reconstruction
         self.mission_grid_frame = mission_grid_frame_from_latlon(
             float(grid_cfg["origin_lat"]), float(grid_cfg["origin_lon"])
         )
         self._initialize_grid(self.lkp_cell)
 
-    def _initialize_grid(self, lkp_cell: Tuple[int, int]) -> None:
+    def _initialize_grid(self, lkp_cell: tuple[int, int]) -> None:
         origin_lat = float(self.config_loader.config["grid"]["origin_lat"])
         origin_lon = float(self.config_loader.config["grid"]["origin_lon"])
         cell_size = self.terrain.cell_size_m
@@ -121,7 +121,7 @@ class FusionEngine:
                     priority_score=0.0,
                     priority_zone=PriorityZoneEnum.P4,
                     status=ZoneStatusEnum.UNSEEN,
-                    last_updated_at=datetime.now(timezone.utc)
+                    last_updated_at=datetime.now(UTC)
                 )
                 self._group_cumulative_scores[zone_id] = {
                     GROUP_A: 0.0,
@@ -136,7 +136,7 @@ class FusionEngine:
                 }
                 self._temporal_pass_history[zone_id] = deque(maxlen=window_passes)
 
-    def _compute_prior_prob(self, cell_x: int, cell_y: int, lkp_cell: Tuple[int, int]) -> float:
+    def _compute_prior_prob(self, cell_x: int, cell_y: int, lkp_cell: tuple[int, int]) -> float:
         """Contextual spatial prior delegated to the terrain model."""
         sigma_lkp_m = float(
             self.config_loader.config.get("grid", {}).get("lkp_sigma_m", 85.0)
@@ -208,7 +208,7 @@ class FusionEngine:
             #    Naive-Bayes log-odds fusion is exact only under that
             #    assumption; correlated modalities would overcount evidence.
             aggregate_group_llr_sum = 0.0
-            group_llr_snapshot: Dict[str, float] = {}
+            group_llr_snapshot: dict[str, float] = {}
             for g_name, raw_score in scores.items():
                 cap = float(group_caps.get(g_name, 4.5))
                 weight = float(group_weights.get(g_name, 1.0))
@@ -283,7 +283,7 @@ class FusionEngine:
             state.priority_score = priority_score
             state.priority_zone = priority_zone
             state.temporal_consistency_score = c_temporal
-            state.last_updated_at = datetime.now(timezone.utc)
+            state.last_updated_at = datetime.now(UTC)
 
             # Directive Generation Guard
             directive_issued_id = None
@@ -328,7 +328,7 @@ class FusionEngine:
             hypo_decay = math.exp(-decay_constant * (elapsed_min - p2_max))
             return max(base_min, phase2_floor * hypo_decay)
 
-    def get_survival_clock_snapshot(self) -> Dict[str, Any]:
+    def get_survival_clock_snapshot(self) -> dict[str, Any]:
         """
         Single authoritative survival-clock computation shared with the HUD so
         the frontend never re-implements the tri-phase formula.
@@ -364,7 +364,7 @@ class FusionEngine:
         # Contour-parallel approach heading is perpendicular to the fall-line.
         return (fall_line_bearing_deg + 90.0) % 360.0
 
-    def _issue_directive_internal(self, state: GridZoneState) -> Tuple[TacticalDirective, bool]:
+    def _issue_directive_internal(self, state: GridZoneState) -> tuple[TacticalDirective, bool]:
         for d in self.active_directives:
             if d.target_zone_id == state.zone_id:
                 return d, False
@@ -398,7 +398,7 @@ class FusionEngine:
         state.status = ZoneStatusEnum.PROBING
         return directive, True
 
-    async def get_search_map_summary(self) -> Dict[str, Any]:
+    async def get_search_map_summary(self) -> dict[str, Any]:
         async with self._state_lock:
             p1 = [z.model_dump(mode="json") for z in self.grid.values() if z.priority_zone == PriorityZoneEnum.P1]
             p2 = [z.model_dump(mode="json") for z in self.grid.values() if z.priority_zone == PriorityZoneEnum.P2]

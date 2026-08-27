@@ -27,10 +27,7 @@ class ThermalAdapter(BaseSensorAdapter):
         snow_depth = payload.geo.snow_depth_est_m
 
         # Calibrated thermal skin-depth attenuation
-        if payload.surface_clue_detected:
-            q_depth = 0.95
-        else:
-            q_depth = math.exp(-3.5 * snow_depth)
+        q_depth = 0.95 if payload.surface_clue_detected else math.exp(-3.5 * snow_depth)
 
         q_wind = 1.0 / (1.0 + (wind_speed * wind_factor))
         delta_temp_score = min(1.0, max(0.1, abs(payload.temperature_delta_c) / 8.0))

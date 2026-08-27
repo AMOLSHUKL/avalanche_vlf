@@ -2,16 +2,16 @@
 Tactical Domain State Models and SAR Protocol Envelopes with Military Geotagging (MGRS),
 Operational Phase Tracking, Marker Releases, and Safe Responder Approach Vectors.
 """
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Generic, List, Optional, TypeVar
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import TypeVar
 
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
 
 
-class MissionPhaseEnum(str, Enum):
+class MissionPhaseEnum(StrEnum):
     ALERT_PREFLIGHT = "ALERT_PREFLIGHT"
     LAWNMOWER_SURFACE_SCAN = "LAWNMOWER_SURFACE_SCAN"
     DEEP_RADAR_SCAN = "DEEP_RADAR_SCAN"
@@ -19,14 +19,14 @@ class MissionPhaseEnum(str, Enum):
     SAR_VECTORING = "SAR_VECTORING"
 
 
-class PriorityZoneEnum(str, Enum):
+class PriorityZoneEnum(StrEnum):
     P1 = "P1"
     P2 = "P2"
     P3 = "P3"
     P4 = "P4"
 
 
-class ZoneStatusEnum(str, Enum):
+class ZoneStatusEnum(StrEnum):
     UNSEEN = "UNSEEN"
     CANDIDATE = "CANDIDATE"
     ACTIVE_SEARCH = "ACTIVE_SEARCH"
@@ -35,7 +35,7 @@ class ZoneStatusEnum(str, Enum):
     CLEARED_FALSE_POSITIVE = "CLEARED_FALSE_POSITIVE"
 
 
-class DirectiveTypeEnum(str, Enum):
+class DirectiveTypeEnum(StrEnum):
     PROBE_EXCAVATE = "PROBE_EXCAVATE"
     SECONDARY_SCAN = "SECONDARY_SCAN"
     DEFER_MONITOR = "DEFER_MONITOR"
@@ -55,11 +55,11 @@ class GridZoneState(BaseModel):
     priority_score: float = Field(default=0.0, ge=0.0, description="Biophysical decision utility score")
     priority_zone: PriorityZoneEnum = PriorityZoneEnum.P4
     status: ZoneStatusEnum = ZoneStatusEnum.UNSEEN
-    burial_depth_estimate_m: Optional[float] = Field(default=None, ge=0.0, le=25.0, description="Estimated burial depth Z")
-    confidence_radius_m: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Estimated spatial uncertainty radius")
-    contributing_evidence_groups: List[str] = Field(default_factory=list, description="List of contributing evidence groups")
+    burial_depth_estimate_m: float | None = Field(default=None, ge=0.0, le=25.0, description="Estimated burial depth Z")
+    confidence_radius_m: float | None = Field(default=None, ge=0.0, le=100.0, description="Estimated spatial uncertainty radius")
+    contributing_evidence_groups: list[str] = Field(default_factory=list, description="List of contributing evidence groups")
     temporal_consistency_score: float = Field(default=0.0, ge=-10.0, le=10.0, description="Multi-pass persistence bonus/penalty")
-    last_updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TacticalDirective(BaseModel):
@@ -82,14 +82,14 @@ class TacticalDirective(BaseModel):
         default=False,
         description="Flag indicating physical LED/RF homing chip release over target"
     )
-    marker_frequency_mhz: Optional[float] = Field(
+    marker_frequency_mhz: float | None = Field(
         default=None,
         ge=100.0,
         le=6000.0,
         description="Deployed RF beacon transmission frequency"
     )
-    issued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    recommended_equipment: List[str] = Field(default_factory=list, description="Recommended probing and excavation equipment")
+    issued_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    recommended_equipment: list[str] = Field(default_factory=list, description="Recommended probing and excavation equipment")
     rationale: str = Field(..., description="Operational rationale and sensor evidence justification")
 
 
@@ -100,18 +100,18 @@ class UAVAssetTelemetry(BaseModel):
     current_lon: float = Field(..., ge=-180.0, le=180.0)
     current_alt_m: float = Field(..., ge=0.0, le=9000.0)
     battery_pct: float = Field(..., ge=0.0, le=100.0)
-    active_sensor_modalities: List[str]
+    active_sensor_modalities: list[str]
     heading_deg: float = Field(..., ge=0.0, le=360.0)
     speed_mps: float = Field(..., ge=0.0, le=100.0)
-    last_telemetry_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_telemetry_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class WSEnvelope(BaseModel, Generic[T]):
+class WSEnvelope[T](BaseModel):
     type: str
     incident_id: str
-    mission_phase: Optional[MissionPhaseEnum] = Field(
+    mission_phase: MissionPhaseEnum | None = Field(
         default=MissionPhaseEnum.LAWNMOWER_SURFACE_SCAN,
         description="Active 5-phase SAR operational lifecycle state"
     )
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     payload: T

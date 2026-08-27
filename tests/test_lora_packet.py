@@ -5,15 +5,13 @@ malformed zone identifiers instead of silently targeting cell (0,0).
 """
 import pytest
 
-from backend.config.loader import ConfigLoader
-from backend.engine.fusion import FusionEngine
 from backend.engine.geo import mission_grid_frame_from_latlon
 from backend.schemas.domain import (
-    TacticalDirective,
     DirectiveTypeEnum,
     PriorityZoneEnum,
+    TacticalDirective,
 )
-from backend.telemetry.lora_packet import LoRaTargetPacket, LORA_PACKET_SIZE
+from backend.telemetry.lora_packet import LORA_PACKET_SIZE, LoRaTargetPacket
 
 
 @pytest.fixture

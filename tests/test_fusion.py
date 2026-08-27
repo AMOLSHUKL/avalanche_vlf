@@ -4,28 +4,24 @@ Validates Mathematical Integrity, Symmetric Evidence, Leaky Anti-Windup Accumula
 Dynamic Survival Parameter Binding, MGRS Geotagging, Micro-Doppler Life-Signs,
 Safe Approach Azimuth, 16-Byte LoRa C-Struct Packaging, and Concurrency Lock Safety.
 """
-import pytest
 import asyncio
 import math
+
+import pytest
 from pydantic import ValidationError
+
 from backend.config.loader import ConfigLoader
-from backend.engine.fusion import FusionEngine
 from backend.engine.adapters.registry import AdapterRegistry
-from backend.telemetry.simulator import TelemetrySimulator
-from backend.telemetry.lora_packet import LoRaTargetPacket, LORA_PACKET_SIZE
-from backend.schemas.sensors import (
-    TransceiverPayload,
-    GPRPayload,
-    ThermalPayload,
-    SeismicAcousticPayload,
-    GeospatialContext
-)
+from backend.engine.fusion import FusionEngine
 from backend.schemas.domain import (
+    DirectiveTypeEnum,
+    MissionPhaseEnum,
     PriorityZoneEnum,
     TacticalDirective,
-    DirectiveTypeEnum,
-    MissionPhaseEnum
 )
+from backend.schemas.sensors import GeospatialContext, GPRPayload, TransceiverPayload
+from backend.telemetry.lora_packet import LORA_PACKET_SIZE, LoRaTargetPacket
+from backend.telemetry.simulator import TelemetrySimulator
 
 
 @pytest.fixture
@@ -188,6 +184,7 @@ def test_safe_approach_azimuth_is_contour_perpendicular(system_fixture):
     gradient expressed in compass-frame components (East, North), including on
     grid-boundary cells where one-sided differencing applies."""
     import math as _math
+
     import numpy as _np
 
     engine, _, _ = system_fixture
@@ -251,6 +248,7 @@ def test_survival_clock_anchored_to_incident_epoch(tmp_path, monkeypatch):
     """Survival time must be measured from the incident epoch, not server start."""
     import shutil
     import time as _time
+
     from backend.config.loader import ConfigLoader
 
     isolated_cfg = tmp_path / "fusion_parameters.yaml"

@@ -46,10 +46,7 @@ def compute_crc16(data: bytes) -> int:
     for byte in data:
         crc ^= (byte << 8)
         for _ in range(8):
-            if crc & 0x8000:
-                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
-            else:
-                crc = (crc << 1) & 0xFFFF
+            crc = (crc << 1 ^ 4129) & 65535 if crc & 32768 else crc << 1 & 65535
     return crc
 
 
@@ -152,7 +149,7 @@ class LoRaTargetPacket:
         abs_northing = grid_frame.origin_northing_m + self.north_offset_m
         return (
             f"{grid_frame.zone:02d}{grid_frame.band} {grid_frame.square} "
-            f"{int(round(abs_easting)) % 100000:05d} {int(round(abs_northing)) % 100000:05d}"
+            f"{round(abs_easting) % 100000:05d} {round(abs_northing) % 100000:05d}"
         )
 
     @classmethod
@@ -174,8 +171,8 @@ class LoRaTargetPacket:
         cx, cy = int(parts[0]), int(parts[1])
 
         utm_origin = geodetic_to_utm(directive.lat, directive.lon)
-        east_offset = int(round(utm_origin.easting_m - grid_frame.origin_easting_m))
-        north_offset = int(round(utm_origin.northing_m - grid_frame.origin_northing_m))
+        east_offset = round(utm_origin.easting_m - grid_frame.origin_easting_m)
+        north_offset = round(utm_origin.northing_m - grid_frame.origin_northing_m)
 
         return cls(
             msg_type=MSG_TYPE_TARGET_VECTOR,
